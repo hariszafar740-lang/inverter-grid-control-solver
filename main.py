@@ -5,12 +5,12 @@ from src.virtual_impedance import VirtualImpedanceController
 from src.visualizer import plot_inverter_response
 
 def main():
-    p_meter = PowerMeasurementLPF(cutoff_freq_hz=10.0, dt=1e-3)
-    vsm = VirtualInertiaEngine(j_kgm2=2.0, dp=15.0, dt=1e-3)
+    dt_s = 1e-3
+    p_meter = PowerMeasurementLPF(cutoff_freq_hz=10.0, dt=dt_s)
+    vsm = VirtualInertiaEngine(j_kgm2=2.0, dp=15.0, dt=dt_s)
     v_imp = VirtualImpedanceController(r_v_ohm=0.1, l_v_h=2.5e-3)
     
-    total_steps = 1000
-    time_array = np.linspace(0, 1.0, total_steps)
+    time_array = np.arange(0.0, 1.0 + 0.5 * dt_s, dt_s)
     
     f_vsm_hist = []
     p_filt_hist = []
