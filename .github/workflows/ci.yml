@@ -2,7 +2,7 @@ name: Inverter Grid Control Solver CI
 
 on:
   push:
-    branches: [main, 'arena/**']
+    branches: [main]
   pull_request:
     branches: [main]
 
