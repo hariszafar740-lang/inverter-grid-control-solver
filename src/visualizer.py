@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .cascaded_control import ElectromagneticTransientResult
+from .gfm_triad import GFMTriadBenchmarkResult
 from .lcl_plant import simulate_lcl_damping_step
 from .thevenin_network import ClosedLoopTransientResult
 
@@ -325,6 +326,182 @@ def plot_lcl_cascaded_electromagnetic_benchmark(
     ax.set_ylim(322.0, 352.0)
     ax.grid(True, ls="--", alpha=0.4)
     ax.legend(loc="upper right", fontsize=8.3, framealpha=0.94)
+
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
+    fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})
+    plt.close(fig)
+    return out
+
+
+def plot_gfm_triad_benchmark(
+    triad: GFMTriadBenchmarkResult,
+    save_path: str | Path = "results/gfm_triad_comparative_response.png",
+) -> Path:
+    """Render the 4-panel Comparative GFM Control Triad (Droop vs VSG vs dVOC) figure."""
+    out = Path(save_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(2, 2, figsize=(14.0, 9.2), dpi=220)
+    fig.suptitle(
+        f"Comparative Grid-Forming Control Triad on 6-State Electromagnetic dq LCL Plant "
+        f"(SCR = {triad.grid.scr:.1f}, X/R = {triad.grid.xr_ratio:.0f})",
+        fontsize=12.4,
+        fontweight="bold",
+        y=0.98,
+    )
+
+    t = triad.vsg.time_s
+
+    # (a) Internal GFM Synchronizing Frequency & Nadir Response
+    ax = axes[0, 0]
+    ax.plot(t, triad.vsg.f_grid_hz, color="#64748b", ls="--", lw=1.5, label="Grid Frequency f_grid(t)")
+    ax.plot(
+        t,
+        triad.droop.f_gfm_hz,
+        color="#d97706",
+        lw=1.8,
+        alpha=0.92,
+        label=f"Droop (13-State, Nadir {triad.droop.nadir_freq_hz:.3f} Hz, 15 Hz LPF)",
+    )
+    ax.plot(
+        t,
+        triad.vsg.f_gfm_hz,
+        color="#1d4ed8",
+        lw=2.1,
+        label=f"VSG (14-State, Nadir {triad.vsg.nadir_freq_hz:.3f} Hz, H = {triad.grid.h_inertia_s:.2f} s)",
+    )
+    ax.plot(
+        t,
+        triad.dvoc.f_gfm_hz,
+        color="#059669",
+        lw=1.9,
+        alpha=0.92,
+        label=f"dVOC (12-State, Nadir {triad.dvoc.nadir_freq_hz:.3f} Hz, Zero LPF)",
+    )
+    ax.axvline(0.25, color="#94a3b8", ls=":", lw=1.1)
+    ax.axvline(1.15, color="#94a3b8", ls=":", lw=1.1)
+    ax.set_title("(a) Internal Frequency Trajectory & Inertial vs. Oscillator Lock", fontsize=10.4, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("Frequency (Hz)", fontsize=9.5)
+    ax.set_ylim(49.70, 50.30)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=8.0, framealpha=0.95)
+
+    # (b) Active Power Dispatch Rise Time (t_90) & Primary Frequency Support
+    ax = axes[0, 1]
+    ax.plot(t, triad.vsg.p_ref_w / 1000.0, color="#0f172a", ls=":", lw=1.4, label="Dispatch Setpoint P_ref(t)")
+    ax.plot(
+        t,
+        triad.droop.p_pcc_w / 1000.0,
+        color="#d97706",
+        lw=1.85,
+        label=(
+            f"Droop (t_90 = {triad.droop.step_rise_time_90_ms:.1f} ms, "
+            f"Peak {triad.droop.freq_drop_peak_power_kw:.2f} kW)"
+        ),
+    )
+    ax.plot(
+        t,
+        triad.vsg.p_pcc_w / 1000.0,
+        color="#1d4ed8",
+        lw=2.05,
+        label=(
+            f"VSG (t_90 = {triad.vsg.step_rise_time_90_ms:.1f} ms, "
+            f"Peak {triad.vsg.freq_drop_peak_power_kw:.2f} kW)"
+        ),
+    )
+    ax.plot(
+        t,
+        triad.dvoc.p_pcc_w / 1000.0,
+        color="#059669",
+        lw=1.9,
+        label=(
+            f"dVOC (t_90 = {triad.dvoc.step_rise_time_90_ms:.1f} ms, "
+            f"Peak {triad.dvoc.freq_drop_peak_power_kw:.2f} kW)"
+        ),
+    )
+    ax.set_title("(b) PCC Active Power Rise Time & Inertial Over-Power Trade-Off", fontsize=10.4, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("PCC Active Power P_pcc (kW)", fontsize=9.5)
+    ax.set_ylim(-2.5, 24.8)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="lower right", fontsize=8.0, framealpha=0.94)
+
+    # (c) Dominant Outer-Loop & Synchronizing Small-Signal Eigenvalue Locus
+    ax = axes[1, 0]
+    ax.axvline(0.0, color="#dc2626", ls="--", lw=1.4, label="Hurwitz Boundary Re(lambda) = 0")
+    ax.axvspan(0.0, 8.0, color="#fee2e2", alpha=0.55)
+    two_pi = 2.0 * np.pi
+    for member, color, marker, label_prefix in (
+        (triad.droop, "#d97706", "s", "Droop 13-State"),
+        (triad.vsg, "#1d4ed8", "o", "VSG 14-State"),
+        (triad.dvoc, "#059669", "^", "dVOC 12-State"),
+    ):
+        dom = member.eigenvalues[member.eigenvalues.real >= -110.0]
+        ax.scatter(
+            dom.real,
+            dom.imag / two_pi,
+            color=color,
+            marker=marker,
+            s=52,
+            alpha=0.92,
+            edgecolors="#0f172a",
+            linewidths=0.5,
+            zorder=4,
+            label=f"{label_prefix} (max Re = {member.max_real_eig_s_inv:.2f} s^-1)",
+        )
+    ax.annotate(
+        "dVOC Kuramoto Sync\n(-10.65 s^-1, 0 Hz)",
+        xy=(-10.65, 0.15),
+        xytext=(-52.0, 2.8),
+        fontsize=8.0,
+        bbox={"boxstyle": "round,pad=0.22", "fc": "white", "ec": "#cbd5e1", "alpha": 0.95},
+        arrowprops={"arrowstyle": "->", "color": "#059669", "lw": 1.15},
+    )
+    ax.annotate(
+        "VSG Swing Mode\n(+-1.53 Hz)",
+        xy=(-4.24, -1.53),
+        xytext=(-48.0, -5.8),
+        fontsize=8.0,
+        bbox={"boxstyle": "round,pad=0.22", "fc": "white", "ec": "#cbd5e1", "alpha": 0.95},
+        arrowprops={"arrowstyle": "->", "color": "#1d4ed8", "lw": 1.15},
+    )
+    ax.set_title("(c) Dominant Synchronizing & Outer-Loop Eigenvalue Spectrum", fontsize=10.4, fontweight="bold")
+    ax.set_xlabel("Real Part Re(lambda) (s^-1)", fontsize=9.5)
+    ax.set_ylabel("Oscillation Frequency Im(lambda)/(2*pi) (Hz)", fontsize=9.5)
+    ax.set_xlim(-112.0, 8.0)
+    ax.set_ylim(-11.5, 11.5)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper left", fontsize=7.9, framealpha=0.95)
+
+    # (d) Nonlinear Andronov-Hopf dVOC Black-Start Self-Excitation Spiral (220 ms)
+    ax = axes[1, 1]
+    bs = triad.black_start
+    v0 = bs.config.v0_peak_v
+    mask_sp = bs.time_s <= 0.22 + 1e-12
+    va_pu = bs.v_alpha_v[mask_sp] / v0
+    vb_pu = bs.v_beta_v[mask_sp] / v0
+    ang = np.linspace(0.0, 2.0 * np.pi, 361)
+
+    # Invisible bounding anchor keeps aspect="equal" warning-free with an unobstructed left legend bay
+    ax.plot([-2.85, 1.35], [-1.25, 1.30], alpha=0.0)
+    ax.plot(np.cos(ang), np.sin(ang), color="#0f172a", ls="--", lw=1.6, label="Limit Cycle ||v_ab|| = 1.00 pu")
+    ax.plot(
+        va_pu,
+        vb_pu,
+        color="#059669",
+        lw=1.55,
+        alpha=0.92,
+        label="220 ms Hopf Spiral (0.10 -> 1.00 pu)",
+    )
+    ax.scatter([va_pu[0]], [vb_pu[0]], color="#dc2626", s=46, zorder=5, label="Black-Start Seed (0.10 pu)")
+    ax.scatter([va_pu[-1]], [vb_pu[-1]], color="#1d4ed8", s=46, zorder=5, label="220 ms Lock (0.996 pu)")
+    ax.set_aspect("equal", adjustable="datalim")
+    ax.set_title("(d) Nonlinear dVOC Black-Start Limit-Cycle Self-Excitation", fontsize=10.4, fontweight="bold")
+    ax.set_xlabel("Stationary EMF v_alpha / V_0 (pu)", fontsize=9.5)
+    ax.set_ylabel("Stationary EMF v_beta / V_0 (pu)", fontsize=9.5)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper left", fontsize=7.6, framealpha=0.95)
 
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
     fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})
