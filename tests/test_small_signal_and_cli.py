@@ -98,9 +98,9 @@ class TestSmallSignalParticipationAndImpedancePassivity:
 
 class TestPEP621PackageWheelAndGFMSimCLI:
     def test_package_namespace_version_and_py_typed(self):
-        assert gfm_solver.__version__ == "0.7.0"
-        assert src.__version__ == "0.7.0"
-        assert CLI_VERSION == "0.7.0"
+        assert gfm_solver.__version__ == "1.0.0"
+        assert src.__version__ == "1.0.0"
+        assert CLI_VERSION == "1.0.0"
         assert set(gfm_solver.__all__) == set(src.__all__)
         pkg_dir = Path(gfm_solver.__file__).resolve().parent
         assert (pkg_dir / "py.typed").is_file()
@@ -145,7 +145,7 @@ class TestPEP621PackageWheelAndGFMSimCLI:
         assert rc_info == 0
         info_data = json.loads(capsys.readouterr().out)
         assert info_data["package"] == "gfm_solver"
-        assert info_data["version"] == "0.7.0"
+        assert info_data["version"] == "1.0.0"
         assert info_data["nominal_rating"]["s_rated_kva"] == 20.0
 
         rc_frt = cli_main(["frt", "--reduced-order", "--json"])
@@ -171,4 +171,4 @@ class TestPEP621PackageWheelAndGFMSimCLI:
             check=True,
         )
         mod_info = json.loads(proc.stdout)
-        assert mod_info["version"] == "0.7.0"
+        assert mod_info["version"] == "1.0.0"

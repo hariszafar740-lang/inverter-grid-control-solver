@@ -54,7 +54,7 @@ class TestGovernanceAndMetadata:
             assert p.stat().st_size > 20, f"Unexpectedly empty file: {rel}"
 
     def test_package_version_and_public_exports(self):
-        assert src.__version__ == "0.7.0"
+        assert src.__version__ == "1.0.0"
         for sym in (
             "CoupledVSGTheveninModel",
             "TheveninGridSpec",

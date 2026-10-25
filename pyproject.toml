@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "inverter-grid-control-solver"
-version = "0.7.0"
+version = "1.0.0"
 description = "Physics-based Grid-Forming (Droop, VSG, dVOC) & Grid-Following (SRF-PLL) electromagnetic LCL, FRT/TVI & dq impedance passivity solver."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,7 +24,7 @@ keywords = [
   "small-signal-stability",
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",

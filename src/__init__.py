@@ -87,6 +87,11 @@ from .weak_grid_benchmark import (
     simulate_weak_grid_line_trip,
     sweep_scr_stability,
 )
+from .web_dashboard import (
+    WORKBENCH_VERSION,
+    build_static_web_workbench,
+    build_web_presets_payload,
+)
 
 if TYPE_CHECKING:
     from .benchmark import (
@@ -96,7 +101,7 @@ if TYPE_CHECKING:
         validate_frt_benchmark_results,
     )
 
-__version__ = "0.7.0"
+__version__ = "1.0.0"
 
 _BENCHMARK_EXPORTS = frozenset(
     {
@@ -144,6 +149,7 @@ __all__ = [
     "TransientVirtualImpedance",
     "VirtualImpedanceController",
     "VirtualInertiaEngine",
+    "WORKBENCH_VERSION",
     "WeakGridArchitecture",
     "WeakGridBenchmarkResult",
     "WeakGridLineTripResult",
@@ -152,6 +158,8 @@ __all__ = [
     "alphabeta_to_abc",
     "alphabeta_to_dq",
     "apply_current_limit",
+    "build_static_web_workbench",
+    "build_web_presets_payload",
     "calculate_rocof_windows",
     "compute_modal_participation",
     "compute_pq_dq",
