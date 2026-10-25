@@ -41,6 +41,7 @@ class TestGovernanceAndMetadata:
             ".github/ISSUE_TEMPLATE/feature_request.yml",
             "results/inverter_transient_response.png",
             "results/lcl_cascaded_electromagnetic_response.png",
+            "results/gfm_triad_comparative_response.png",
         )
         for rel in required:
             p = REPO_ROOT / rel
@@ -48,13 +49,24 @@ class TestGovernanceAndMetadata:
             assert p.stat().st_size > 20, f"Unexpectedly empty file: {rel}"
 
     def test_package_version_and_public_exports(self):
-        assert src.__version__ == "0.3.0"
-        for sym in ("CoupledVSGTheveninModel", "TheveninGridSpec", "simulate_coupled_vsg_transient"):
+        assert src.__version__ == "0.4.0"
+        for sym in (
+            "CoupledVSGTheveninModel",
+            "TheveninGridSpec",
+            "simulate_coupled_vsg_transient",
+            "DVOCConfig",
+            "DispatchableVirtualOscillator",
+            "MultiLoopDroopGFMModel",
+            "MultiLoopDVOCGFMModel",
+            "run_gfm_triad_benchmark",
+        ):
             assert hasattr(src, sym)
 
     def test_readme_honest_scope_and_figure_reference(self):
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         assert "results/inverter_transient_response.png" in readme
+        assert "results/lcl_cascaded_electromagnetic_response.png" in readme
+        assert "results/gfm_triad_comparative_response.png" in readme
         assert "not evidence of real-hardware performance" in readme
 
 
@@ -80,7 +92,6 @@ class TestHardenedControlValidation:
 class TestCoupledVSGTheveninPhysics:
     def test_grid_spec_impedance_and_inertia_identities(self):
         spec = TheveninGridSpec(s_rated_va=20_000.0, v_phase_rms_v=230.0, scr=5.0, xr_ratio=7.0, j_kgm2=2.0)
-        # V_LL = 230 * sqrt(3) => V_LL^2 = 158,700 => Z_base = 158700 / 20000 = 7.935 Ohm
         assert spec.z_base_ohm == pytest.approx(7.935, rel=1e-6)
         assert spec.z_grid_mag_ohm == pytest.approx(7.935 / 5.0, rel=1e-6)
         assert math.hypot(spec.r_g_ohm, spec.x_g_nom_ohm) == pytest.approx(spec.z_grid_mag_ohm, rel=1e-9)
@@ -98,7 +109,6 @@ class TestCoupledVSGTheveninPhysics:
             grid_freq_drop_time_s=1.15,
             grid_freq_drop_hz=-0.20,
         )
-        # Analytical steady-state droop: P_inf = P_ref + D_p * w0 * (w0 - w_g)
         dw = 2.0 * math.pi * 0.20
         expected_p_w = 10_000.0 + spec.dp_nms_rad * spec.w0_rad_s * dw
         assert res.f_vsg_hz[-1] == pytest.approx(49.80, abs=2e-3)
@@ -109,7 +119,6 @@ class TestCoupledVSGTheveninPhysics:
         spec = TheveninGridSpec()
         model = CoupledVSGTheveninModel(spec)
 
-        # Smooth single-regime step from t=0 (P_ref = 8 kW, f_grid = 49.9 Hz)
         res = simulate_coupled_vsg_transient(
             spec,
             duration_s=1.2,
@@ -144,11 +153,13 @@ class TestCoupledVSGTheveninPhysics:
     def test_main_entrypoint_and_reproducible_figure(self, tmp_path, capsys):
         fig_file = tmp_path / "transient.png"
         lcl_file = tmp_path / "lcl.png"
-        rc = main_entry.main(save_path=fig_file, lcl_save_path=lcl_file)
+        triad_file = tmp_path / "triad.png"
+        rc = main_entry.main(save_path=fig_file, lcl_save_path=lcl_file, triad_save_path=triad_file)
         captured = capsys.readouterr().out
         assert rc == 0
         assert fig_file.is_file() and fig_file.stat().st_size > 40_000
         assert lcl_file.is_file() and lcl_file.stat().st_size > 40_000
+        assert triad_file.is_file() and triad_file.stat().st_size > 40_000
         assert "DAY 19" not in captured
         assert "GRID-FORMING INVERTER CLOSED-LOOP" in captured
 

@@ -1,4 +1,4 @@
-"""Grid-Forming Inverter Control, Electromagnetic LCL Plant & Thévenin Network Solver."""
+"""Grid-Forming Inverter Control Triad, Electromagnetic LCL Plant & Thévenin Network Solver."""
 
 from typing import TYPE_CHECKING
 
@@ -18,6 +18,20 @@ from .dq_frames import (
     rotate_dq_frame,
 )
 from .droop_control import InverterDroopController
+from .dvoc_control import (
+    BlackStartExcitationResult,
+    DispatchableVirtualOscillator,
+    DVOCConfig,
+)
+from .gfm_triad import (
+    GFMMode,
+    GFMTriadBenchmarkResult,
+    GFMTriadMemberResult,
+    MultiLoopDroopGFMModel,
+    MultiLoopDVOCGFMModel,
+    run_gfm_triad_benchmark,
+    simulate_gfm_mode_transient,
+)
 from .lcl_plant import LCLFilterSpec, LCLGridPlant, simulate_lcl_damping_step
 from .power_measurement import PowerMeasurementLPF
 from .thevenin_network import (
@@ -30,6 +44,7 @@ from .virtual_impedance import VirtualImpedanceController
 from .virtual_inertia import VirtualInertiaEngine
 from .visualizer import (
     plot_closed_loop_thevenin_benchmark,
+    plot_gfm_triad_benchmark,
     plot_inverter_response,
     plot_lcl_cascaded_electromagnetic_benchmark,
 )
@@ -42,7 +57,7 @@ if TYPE_CHECKING:
         validate_frt_benchmark_results,
     )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 _BENCHMARK_EXPORTS = frozenset(
     {
@@ -55,14 +70,22 @@ _BENCHMARK_EXPORTS = frozenset(
 
 __all__ = [
     "BenchmarkAcceptanceError",
+    "BlackStartExcitationResult",
     "CascadedPIConfig",
     "ClosedLoopTransientResult",
     "CoupledVSGTheveninModel",
+    "DVOCConfig",
+    "DispatchableVirtualOscillator",
     "ElectromagneticGFMModel",
     "ElectromagneticTransientResult",
+    "GFMMode",
+    "GFMTriadBenchmarkResult",
+    "GFMTriadMemberResult",
     "InverterDroopController",
     "LCLFilterSpec",
     "LCLGridPlant",
+    "MultiLoopDVOCGFMModel",
+    "MultiLoopDroopGFMModel",
     "PowerMeasurementLPF",
     "TheveninGridSpec",
     "VirtualImpedanceController",
@@ -77,12 +100,15 @@ __all__ = [
     "current_reference_from_power",
     "dq_to_alphabeta",
     "plot_closed_loop_thevenin_benchmark",
+    "plot_gfm_triad_benchmark",
     "plot_inverter_response",
     "plot_lcl_cascaded_electromagnetic_benchmark",
     "rotate_dq_frame",
     "run_fault_ride_through_benchmark",
+    "run_gfm_triad_benchmark",
     "simulate_coupled_vsg_transient",
     "simulate_electromagnetic_gfm_transient",
+    "simulate_gfm_mode_transient",
     "simulate_lcl_damping_step",
     "validate_frt_benchmark_results",
 ]
