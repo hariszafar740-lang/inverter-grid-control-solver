@@ -1,4 +1,4 @@
-"""Grid-Forming & Grid-Following Inverter Control, Electromagnetic LCL Plant & FRT Solver."""
+"""Grid-Forming & Grid-Following Inverter Control, LCL Plant, FRT & dq Impedance Solver."""
 
 from typing import TYPE_CHECKING
 
@@ -48,6 +48,17 @@ from .gfm_triad import (
 )
 from .lcl_plant import LCLFilterSpec, LCLGridPlant, simulate_lcl_damping_step
 from .power_measurement import PowerMeasurementLPF
+from .small_signal_impedance import (
+    DQAdmittanceSweepResult,
+    ImpedanceArchitecture,
+    ModalParticipationResult,
+    OscillatoryModeSummary,
+    SmallSignalImpedanceBenchmarkResult,
+    compute_modal_participation,
+    evaluate_dq_admittance_and_nyquist,
+    grid_thevenin_impedance_dq,
+    run_small_signal_impedance_benchmark,
+)
 from .thevenin_network import (
     ClosedLoopTransientResult,
     CoupledVSGTheveninModel,
@@ -63,6 +74,7 @@ from .visualizer import (
     plot_gfm_triad_benchmark,
     plot_inverter_response,
     plot_lcl_cascaded_electromagnetic_benchmark,
+    plot_small_signal_impedance_benchmark,
     plot_weak_grid_scr_benchmark,
 )
 from .weak_grid_benchmark import (
@@ -84,7 +96,7 @@ if TYPE_CHECKING:
         validate_frt_benchmark_results,
     )
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 _BENCHMARK_EXPORTS = frozenset(
     {
@@ -101,6 +113,7 @@ __all__ = [
     "CascadedPIConfig",
     "ClosedLoopTransientResult",
     "CoupledVSGTheveninModel",
+    "DQAdmittanceSweepResult",
     "DVOCConfig",
     "DispatchableVirtualOscillator",
     "ElectromagneticFRTBenchmarkResult",
@@ -112,15 +125,19 @@ __all__ = [
     "GFMMode",
     "GFMTriadBenchmarkResult",
     "GFMTriadMemberResult",
+    "ImpedanceArchitecture",
     "InverterDroopController",
     "LCLFilterSpec",
     "LCLGridPlant",
+    "ModalParticipationResult",
     "MultiLoopDVOCGFMModel",
     "MultiLoopDroopGFMModel",
+    "OscillatoryModeSummary",
     "PowerMeasurementLPF",
     "ProtectionMode",
     "SCRStabilityPoint",
     "SRFPLLConfig",
+    "SmallSignalImpedanceBenchmarkResult",
     "SynchronousReferenceFramePLL",
     "TVIConfig",
     "TheveninGridSpec",
@@ -136,20 +153,25 @@ __all__ = [
     "alphabeta_to_dq",
     "apply_current_limit",
     "calculate_rocof_windows",
+    "compute_modal_participation",
     "compute_pq_dq",
     "current_reference_from_power",
     "dq_to_alphabeta",
     "estimate_critical_scr",
+    "evaluate_dq_admittance_and_nyquist",
+    "grid_thevenin_impedance_dq",
     "plot_closed_loop_thevenin_benchmark",
     "plot_electromagnetic_frt_benchmark",
     "plot_gfm_triad_benchmark",
     "plot_inverter_response",
     "plot_lcl_cascaded_electromagnetic_benchmark",
+    "plot_small_signal_impedance_benchmark",
     "plot_weak_grid_scr_benchmark",
     "rotate_dq_frame",
     "run_electromagnetic_frt_benchmark",
     "run_fault_ride_through_benchmark",
     "run_gfm_triad_benchmark",
+    "run_small_signal_impedance_benchmark",
     "run_weak_grid_scr_benchmark",
     "simulate_coupled_vsg_transient",
     "simulate_electromagnetic_gfm_transient",

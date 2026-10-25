@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: "Zafar"
     given-names: "Haris"
-version: 0.6.0
+version: 0.7.0
 date-released: "2026-10-25"
 license: MIT
 repository-code: "https://github.com/hariszafar740-lang/inverter-grid-control-solver"
@@ -21,3 +21,5 @@ keywords:
   - weak-grid-stability
   - transient-virtual-impedance
   - anti-windup
+  - impedance-passivity
+  - generalized-nyquist

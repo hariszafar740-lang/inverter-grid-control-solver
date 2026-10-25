@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inverter-grid-control-solver"
+version = "0.7.0"
+description = "Physics-based Grid-Forming (Droop, VSG, dVOC) & Grid-Following (SRF-PLL) electromagnetic LCL, FRT/TVI & dq impedance passivity solver."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Haris Zafar" },
+]
+keywords = [
+  "grid-forming-inverter",
+  "virtual-synchronous-generator",
+  "dispatchable-virtual-oscillator",
+  "phase-locked-loop",
+  "fault-ride-through",
+  "transient-virtual-impedance",
+  "impedance-passivity",
+  "small-signal-stability",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
+]
+dependencies = [
+  "numpy>=1.26.0,<3",
+  "scipy>=1.11.0,<2",
+  "matplotlib>=3.8.0,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0,<10",
+  "ruff>=0.6.0,<1",
+  "build>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/hariszafar740-lang/inverter-grid-control-solver"
+Repository = "https://github.com/hariszafar740-lang/inverter-grid-control-solver"
+Issues = "https://github.com/hariszafar740-lang/inverter-grid-control-solver/issues"
+
+[project.scripts]
+gfm-sim = "gfm_solver.cli:main"
+
+[tool.setuptools]
+packages = ["gfm_solver"]
+package-dir = { gfm_solver = "src" }
+include-package-data = true
+
+[tool.setuptools.package-data]
+gfm_solver = ["py.typed"]

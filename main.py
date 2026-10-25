@@ -1,4 +1,4 @@
-"""Reproducible Thévenin, 14-state LCL, GFM Triad, Weak-Grid SCR & EM FRT/TVI entry point."""
+"""Reproducible Thévenin, 14-state LCL, GFM Triad, Weak-Grid, EM FRT & dq Impedance entry point."""
 
 from __future__ import annotations
 
@@ -8,12 +8,14 @@ from src.benchmark import run_fault_ride_through_benchmark, validate_frt_benchma
 from src.cascaded_control import simulate_electromagnetic_gfm_transient
 from src.em_frt_benchmark import run_electromagnetic_frt_benchmark
 from src.gfm_triad import run_gfm_triad_benchmark
+from src.small_signal_impedance import run_small_signal_impedance_benchmark
 from src.thevenin_network import TheveninGridSpec, simulate_coupled_vsg_transient
 from src.visualizer import (
     plot_closed_loop_thevenin_benchmark,
     plot_electromagnetic_frt_benchmark,
     plot_gfm_triad_benchmark,
     plot_lcl_cascaded_electromagnetic_benchmark,
+    plot_small_signal_impedance_benchmark,
     plot_weak_grid_scr_benchmark,
 )
 from src.weak_grid_benchmark import run_weak_grid_scr_benchmark
@@ -70,12 +72,22 @@ def generate_electromagnetic_frt_figure(
     return em_frt_res, out
 
 
+def generate_small_signal_impedance_figure(
+    save_path: str | Path = "results/small_signal_eigenvalue_impedance_passivity.png",
+):
+    """Run the Small-Signal Modal Participation, dq Passivity & Nyquist benchmark and plot."""
+    ssi_res = run_small_signal_impedance_benchmark()
+    out = plot_small_signal_impedance_benchmark(ssi_res, save_path=save_path)
+    return ssi_res, out
+
+
 def main(
     save_path: str | Path = "results/inverter_transient_response.png",
     lcl_save_path: str | Path | None = None,
     triad_save_path: str | Path | None = None,
     weak_grid_save_path: str | Path | None = None,
     em_frt_save_path: str | Path | None = None,
+    ssi_save_path: str | Path | None = None,
 ) -> int:
     out_main = Path(save_path)
     out_lcl = (
@@ -98,19 +110,25 @@ def main(
         if em_frt_save_path is not None
         else out_main.parent / "em_frt_tvi_phase_jump_response.png"
     )
+    out_ssi = (
+        Path(ssi_save_path)
+        if ssi_save_path is not None
+        else out_main.parent / "small_signal_eigenvalue_impedance_passivity.png"
+    )
 
     qs_res, fig_qs = generate_reference_transient_figure(save_path=out_main)
     em_res, fig_em = generate_lcl_electromagnetic_figure(qs_res=qs_res, save_path=out_lcl)
     triad_res, fig_triad = generate_gfm_triad_figure(spec=qs_res.spec, save_path=out_triad)
     wg_res, fig_wg = generate_weak_grid_scr_figure(save_path=out_wg)
     em_frt_res, fig_em_frt = generate_electromagnetic_frt_figure(save_path=out_em_frt)
+    ssi_res, fig_ssi = generate_small_signal_impedance_figure(save_path=out_ssi)
     frt = run_fault_ride_through_benchmark()
     validate_frt_benchmark_results(frt, require_current_limit=True)
 
     f_res = em_res.lcl.coupled_resonance_hz(em_res.grid.l_g_h)
-    print("=" * 90)
-    print("GRID-FORMING & WEAK-GRID GFL/GFM ELECTROMAGNETIC LCL, TRIAD & EM-FRT BENCHMARK")
-    print("=" * 90)
+    print("=" * 92)
+    print("GRID-FORMING & WEAK-GRID GFL/GFM LCL, TRIAD, EM-FRT & DQ IMPEDANCE PASSIVITY BENCHMARK")
+    print("=" * 92)
     print(
         f"Grid Rating & Strength: S_rated = {qs_res.spec.s_rated_va / 1e3:.1f} kVA | "
         f"SCR = {qs_res.spec.scr:.1f} | X/R = {qs_res.spec.xr_ratio:.1f} | H = {qs_res.spec.h_inertia_s:.2f} s"
@@ -149,12 +167,26 @@ def main(
         f"Clamp {sh.max_abs_delta_deg:.0f} deg) | "
         f"-45deg Jump I_pk = {jp.peak_bridge_current_a:.2f} A (Clamp LOS {jh.max_abs_delta_deg:.0f} deg)"
     )
+    av, au, g35, g55 = (
+        ssi_res.admittance_vsg,
+        ssi_res.admittance_vsg_unity_ff,
+        ssi_res.admittance_gfl35,
+        ssi_res.admittance_gfl55,
+    )
+    print(
+        f"dq Admittance & Nyquist:"
+        f" VSG(F_i=0.75) nu_min = {av.min_passivity_high_freq_s:+.3f} S (Z={av.nyquist_rhp_poles_z}) |"
+        f" VSG(F_i=1.0) nu_min = {au.min_passivity_high_freq_s:+.2f} S (Z={au.nyquist_rhp_poles_z}) |"
+        f" GFL(35/55Hz) Z = {g35.nyquist_rhp_poles_z}/{g55.nyquist_rhp_poles_z}"
+    )
     print(
         f"Reduced-Order 0.5pu Sag: I_max = {frt['fault_max_current_a']:.2f} A | "
         f"Fault RoCoF = {frt['max_rocof']:.4f} Hz/s | Settling = {frt['recovery_settling_time_s']:.3f} s"
     )
-    print(f"Saved Figures:          {fig_qs} | {fig_em} | {fig_triad} | {fig_wg} | {fig_em_frt}")
-    print("=" * 90)
+    print(
+        f"Saved Figures:          {fig_qs} | {fig_em} | {fig_triad} | {fig_wg} | {fig_em_frt} | {fig_ssi}"
+    )
+    print("=" * 92)
     return 0
 
 
