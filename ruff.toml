@@ -5,4 +5,4 @@ target-version = "py310"
 select = ["E", "F", "W", "I", "UP"]
 
 [lint.isort]
-known-first-party = ["src"]
+known-first-party = ["src", "gfm_solver"]

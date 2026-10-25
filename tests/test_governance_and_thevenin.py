@@ -44,6 +44,9 @@ class TestGovernanceAndMetadata:
             "results/gfm_triad_comparative_response.png",
             "results/gfl_vs_gfm_weak_grid_collapse.png",
             "results/em_frt_tvi_phase_jump_response.png",
+            "results/small_signal_eigenvalue_impedance_passivity.png",
+            "pyproject.toml",
+            "src/py.typed",
         )
         for rel in required:
             p = REPO_ROOT / rel
@@ -51,7 +54,7 @@ class TestGovernanceAndMetadata:
             assert p.stat().st_size > 20, f"Unexpectedly empty file: {rel}"
 
     def test_package_version_and_public_exports(self):
-        assert src.__version__ == "0.6.0"
+        assert src.__version__ == "0.7.0"
         for sym in (
             "CoupledVSGTheveninModel",
             "TheveninGridSpec",
@@ -67,6 +70,9 @@ class TestGovernanceAndMetadata:
             "TVIConfig",
             "TransientVirtualImpedance",
             "run_electromagnetic_frt_benchmark",
+            "compute_modal_participation",
+            "evaluate_dq_admittance_and_nyquist",
+            "run_small_signal_impedance_benchmark",
         ):
             assert hasattr(src, sym)
 
@@ -77,6 +83,7 @@ class TestGovernanceAndMetadata:
         assert "results/gfm_triad_comparative_response.png" in readme
         assert "results/gfl_vs_gfm_weak_grid_collapse.png" in readme
         assert "results/em_frt_tvi_phase_jump_response.png" in readme
+        assert "results/small_signal_eigenvalue_impedance_passivity.png" in readme
         assert "not evidence of real-hardware performance" in readme
 
 
@@ -166,12 +173,14 @@ class TestCoupledVSGTheveninPhysics:
         triad_file = tmp_path / "triad.png"
         wg_file = tmp_path / "wg.png"
         em_frt_file = tmp_path / "em_frt.png"
+        ssi_file = tmp_path / "ssi.png"
         rc = main_entry.main(
             save_path=fig_file,
             lcl_save_path=lcl_file,
             triad_save_path=triad_file,
             weak_grid_save_path=wg_file,
             em_frt_save_path=em_frt_file,
+            ssi_save_path=ssi_file,
         )
         captured = capsys.readouterr().out
         assert rc == 0
@@ -180,6 +189,7 @@ class TestCoupledVSGTheveninPhysics:
         assert triad_file.is_file() and triad_file.stat().st_size > 40_000
         assert wg_file.is_file() and wg_file.stat().st_size > 40_000
         assert em_frt_file.is_file() and em_frt_file.stat().st_size > 40_000
+        assert ssi_file.is_file() and ssi_file.stat().st_size > 40_000
         assert "DAY 19" not in captured
         assert "GRID-FORMING & WEAK-GRID GFL/GFM" in captured
 

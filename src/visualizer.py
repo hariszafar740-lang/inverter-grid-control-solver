@@ -15,6 +15,7 @@ from .cascaded_control import ElectromagneticTransientResult
 from .em_frt_benchmark import ElectromagneticFRTBenchmarkResult
 from .gfm_triad import GFMTriadBenchmarkResult
 from .lcl_plant import simulate_lcl_damping_step
+from .small_signal_impedance import SmallSignalImpedanceBenchmarkResult
 from .thevenin_network import ClosedLoopTransientResult
 from .weak_grid_benchmark import SCRStabilityPoint, WeakGridBenchmarkResult
 
@@ -930,6 +931,215 @@ def plot_electromagnetic_frt_benchmark(
     ax.set_ylim(-15.0, 415.0)
     ax.grid(True, ls="--", alpha=0.4)
     ax.legend(loc="upper left", fontsize=7.45, framealpha=0.95)
+
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
+    fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})
+    plt.close(fig)
+    return out
+
+
+def plot_small_signal_impedance_benchmark(
+    ssi: SmallSignalImpedanceBenchmarkResult,
+    save_path: str | Path = "results/small_signal_eigenvalue_impedance_passivity.png",
+) -> Path:
+    """Render 4-panel modal participation, SCR root-locus, dq passivity & Nyquist figure."""
+    out = Path(save_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(2, 2, figsize=(14.0, 9.0))
+    fig.suptitle(
+        "Small-Signal Modal Participation, Synchronous-dq Admittance Passivity & Generalized Nyquist",
+        fontsize=12.3,
+        fontweight="bold",
+        y=0.985,
+    )
+
+    # (a) Dominant Eigenvalue Root Locus in the s-Plane as SCR Sweeps 5.0 -> 1.40
+    ax = axes[0, 0]
+    ax.axvspan(0.0, 335.0, color="#fee2e2", alpha=0.45, label="Unstable RHP (Re{lambda} > 0)")
+    ax.axvline(0.0, color="#dc2626", ls="--", lw=1.4, label="Hopf Boundary Re{lambda} = 0")
+
+    def _dom_mode_track(eig_grid):
+        re_arr, f_arr = [], []
+        for row in eig_grid:
+            osc = [z for z in row if abs(z.imag) > 1.0]
+            dom = sorted(osc if osc else row, key=lambda z: (-z.real, -abs(z.imag)))[0]
+            re_arr.append(float(dom.real))
+            f_arr.append(abs(float(dom.imag)) / (2.0 * np.pi))
+        return np.asarray(re_arr), np.asarray(f_arr)
+
+    rv, fv = _dom_mode_track(ssi.locus_vsg_eigs)
+    ro, fo = _dom_mode_track(ssi.locus_dvoc_eigs)
+    r35, f35 = _dom_mode_track(ssi.locus_gfl35_eigs)
+    r55, f55 = _dom_mode_track(ssi.locus_gfl55_eigs)
+
+    ax.plot(rv, fv, "o-", color="#059669", ms=3.8, lw=1.9, label="GFM VSG (SCR 5.0 -> 1.40, Hurwitz)")
+    ax.plot(ro, fo, "s--", color="#0284c7", ms=3.5, lw=1.7, label="GFM dVOC (SCR 5.0 -> 1.40, Hurwitz)")
+    ax.plot(r35, f35, "^-", color="#d97706", ms=4.0, lw=1.8, label="GFL 35 Hz PLL (Crosses @ SCR = 1.80)")
+    ax.plot(r55, f55, "d-.", color="#dc2626", ms=4.0, lw=1.8, label="GFL 55 Hz PLL (Crosses @ SCR = 2.99)")
+    ax.set_title("(a) Dominant Eigenvalue Root Locus (SCR: 5.0 -> 1.40)", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Real Part Re{lambda} (s^-1)", fontsize=9.5)
+    ax.set_ylabel("Oscillation Frequency |Im{lambda}| / 2pi (Hz)", fontsize=9.5)
+    ax.set_xlim(-105.0, 335.0)
+    ax.set_ylim(-28.0, 640.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=7.45, framealpha=0.95)
+
+    # (b) 14-State VSG Subsystem Modal Participation Breakdown
+    ax = axes[0, 1]
+    modes = ssi.vsg_participation.modes
+    y_pos = np.arange(len(modes))
+    sync_s = np.array([m.sync_outer_pct for m in modes])
+    vpi_s = np.array([m.voltage_pi_pct for m in modes])
+    ipi_s = np.array([m.current_pi_pct for m in modes])
+    lcl_s = np.array([m.lcl_network_pct for m in modes])
+    m_labels = [m.label for m in modes]
+
+    ax.barh(y_pos, sync_s, color="#059669", height=0.66, label="Sync & Power Outer (delta, omega, P_f, Q_f)")
+    ax.barh(y_pos, vpi_s, left=sync_s, color="#0284c7", height=0.66, label="Outer Voltage PI (xi_vd, xi_vq)")
+    ax.barh(
+        y_pos,
+        ipi_s,
+        left=sync_s + vpi_s,
+        color="#d97706",
+        height=0.66,
+        label="Inner Current PI (xi_id, xi_iq)",
+    )
+    ax.barh(
+        y_pos,
+        lcl_s,
+        left=sync_s + vpi_s + ipi_s,
+        color="#7c3aed",
+        height=0.66,
+        label="Electromagnetic LCL & Network (i_1, v_c, i_2)",
+    )
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(m_labels, fontsize=8.0)
+    ax.set_xlim(0.0, 104.0)
+    ax.set_ylim(-0.6, len(modes) + 1.45)
+    ax.set_title("(b) 14-State VSG Subsystem Participation Factors P_ki", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Normalized Modal Participation Share (%)", fontsize=9.5)
+    ax.grid(True, axis="x", ls="--", alpha=0.4)
+    ax.legend(loc="upper center", ncol=2, fontsize=7.0, framealpha=0.95)
+
+    # (c) Synchronous-dq Input Admittance Passivity Index nu(f) (>= 10 Hz)
+    ax = axes[1, 0]
+    av = ssi.admittance_vsg
+    au = ssi.admittance_vsg_unity_ff
+    g35 = ssi.admittance_gfl35
+    g55 = ssi.admittance_gfl55
+    mask_p = av.freqs_hz >= 10.0
+
+    ax.axhspan(-1.25, 0.0, color="#fee2e2", alpha=0.40, label="Non-Passive Region (nu(f) < 0 S)")
+    ax.axhline(0.0, color="#334155", ls="--", lw=1.25)
+    ax.semilogx(
+        av.freqs_hz[mask_p],
+        av.passivity_index_s[mask_p],
+        color="#059669",
+        lw=2.15,
+        label=f"GFM VSG F_i = 0.75 (Passive >=25 Hz, min {av.min_passivity_high_freq_s:+.3f} S)",
+    )
+    ax.semilogx(
+        au.freqs_hz[mask_p],
+        au.passivity_index_s[mask_p],
+        color="#7c3aed",
+        lw=1.8,
+        ls="--",
+        label=f"GFM VSG Naive F_i = 1.00 (Dip {au.min_passivity_high_freq_s:+.2f} S -> Unstable)",
+    )
+    ax.semilogx(
+        g35.freqs_hz[mask_p],
+        g35.passivity_index_s[mask_p],
+        color="#d97706",
+        lw=1.8,
+        ls="-.",
+        label=f"GFL 35 Hz PLL (Re{{Y_qq}}<0 to {g35.neg_re_yqq_band_hz[1]:.0f} Hz)",
+    )
+    ax.semilogx(
+        g55.freqs_hz[mask_p],
+        g55.passivity_index_s[mask_p],
+        color="#dc2626",
+        lw=1.85,
+        label=f"GFL 55 Hz PLL (Re{{Y_qq}}<0 to {g55.neg_re_yqq_band_hz[1]:.0f} Hz)",
+    )
+    ax.set_title("(c) Synchronous-dq Admittance Passivity Index nu(f)", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Frequency f (Hz, log scale)", fontsize=9.5)
+    ax.set_ylabel("Passivity Index nu(f) = lambda_min(0.5[Y+Y^H]) (S)", fontsize=9.2)
+    ax.set_xlim(10.0, 6000.0)
+    ax.set_ylim(-1.16, 0.58)
+    ax.grid(True, which="both", ls="--", alpha=0.4)
+    ax.legend(loc="lower right", fontsize=7.25, framealpha=0.95)
+
+    # (d) Generalized Nyquist Cauchy Winding Index Z(f) = P - Delta arg det(I + Z_g Y_inv) / pi
+    ax = axes[1, 1]
+    ad = ssi.admittance_dvoc
+    ax.axhline(0.0, color="#059669", ls=":", lw=1.25)
+    ax.axhline(2.0, color="#d97706", ls=":", lw=1.1)
+    ax.axhline(4.0, color="#dc2626", ls=":", lw=1.1)
+    ax.semilogx(
+        av.freqs_hz,
+        av.cumulative_rhp_index,
+        color="#059669",
+        lw=2.15,
+        label=(
+            f"GFM VSG F_i=0.75 (P={av.open_loop_rhp_poles_p}, "
+            f"N={av.nyquist_encirclements_n:+d} => Z={av.nyquist_rhp_poles_z})"
+        ),
+    )
+    ax.semilogx(
+        ad.freqs_hz,
+        ad.cumulative_rhp_index,
+        color="#0284c7",
+        lw=1.8,
+        ls="--",
+        label=(
+            f"GFM dVOC (P={ad.open_loop_rhp_poles_p}, "
+            f"N={ad.nyquist_encirclements_n:+d} => Z={ad.nyquist_rhp_poles_z})"
+        ),
+    )
+    ax.semilogx(
+        au.freqs_hz,
+        au.cumulative_rhp_index,
+        color="#7c3aed",
+        lw=1.7,
+        ls=":",
+        label=(
+            f"GFM VSG F_i=1.00 (P={au.open_loop_rhp_poles_p}, "
+            f"N={au.nyquist_encirclements_n:+d} => Z={au.nyquist_rhp_poles_z} RHP!)"
+        ),
+    )
+    ax.semilogx(
+        g35.freqs_hz,
+        g35.cumulative_rhp_index,
+        color="#d97706",
+        lw=1.85,
+        ls="-.",
+        label=(
+            f"GFL 35 Hz PLL (P={g35.open_loop_rhp_poles_p}, "
+            f"N={g35.nyquist_encirclements_n:+d} => Z={g35.nyquist_rhp_poles_z} RHP!)"
+        ),
+    )
+    ax.semilogx(
+        g55.freqs_hz,
+        g55.cumulative_rhp_index,
+        color="#dc2626",
+        lw=2.0,
+        label=(
+            f"GFL 55 Hz PLL (P={g55.open_loop_rhp_poles_p}, "
+            f"N={g55.nyquist_encirclements_n:+d} => Z={g55.nyquist_rhp_poles_z} RHP!)"
+        ),
+    )
+    ax.set_title(
+        f"(d) Generalized Nyquist Cauchy RHP Pole Index @ SCR = {ssi.scr_operating:.2f}",
+        fontsize=10.3,
+        fontweight="bold",
+    )
+    ax.set_xlabel("Frequency f (Hz, log scale)", fontsize=9.5)
+    ax.set_ylabel("Cumulative RHP Pole Index P + N(f)", fontsize=9.5)
+    ax.set_xlim(0.25, 6000.0)
+    ax.set_ylim(-1.25, 5.55)
+    ax.grid(True, which="both", ls="--", alpha=0.4)
+    ax.legend(loc="upper left", fontsize=7.25, framealpha=0.95)
 
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
     fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})

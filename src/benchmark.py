@@ -15,16 +15,20 @@ from typing import Any
 
 import numpy as np
 
-# Preserve both supported entry points: ``python -m src.benchmark`` and the
-# repository's historical ``python src/benchmark.py`` workflow command.
-if __package__ in (None, ""):
-    repository_root = str(Path(__file__).resolve().parents[1])
-    if repository_root not in sys.path:
-        sys.path.insert(0, repository_root)
-
-from src.current_control import apply_current_limit, current_reference_from_power
-from src.power_measurement import PowerMeasurementLPF
-from src.virtual_inertia import VirtualInertiaEngine
+# Support standalone wheel imports (``gfm_solver``), module execution
+# (``python -m src.benchmark`` / ``python -m gfm_solver.benchmark``), and direct
+# historical script execution (``python src/benchmark.py``).
+if __package__ not in (None, ""):
+    from .current_control import apply_current_limit, current_reference_from_power
+    from .power_measurement import PowerMeasurementLPF
+    from .virtual_inertia import VirtualInertiaEngine
+else:
+    _module_dir = str(Path(__file__).resolve().parent)
+    if _module_dir not in sys.path:
+        sys.path.insert(0, _module_dir)
+    from current_control import apply_current_limit, current_reference_from_power  # type: ignore[no-redef]
+    from power_measurement import PowerMeasurementLPF  # type: ignore[no-redef]
+    from virtual_inertia import VirtualInertiaEngine  # type: ignore[no-redef]
 
 NOMINAL_FREQUENCY_HZ = 50.0
 NOMINAL_VOLTAGE_RMS_PHASE_V = 230.0
