@@ -6,10 +6,13 @@
 
 Physics-based Python simulation and verification framework for **Grid-Forming (GFM) Inverter Control**:
 
-- **Closed-Loop Coupled Thévenin AC Network (`src/thevenin_network.py`):** Couples a Virtual Synchronous Generator (`VSG`) swing equation, outer $Q\text{--}V$ voltage droop (`src/droop_control.py`), stationary $\alpha\beta$ virtual impedance $\mathbf{Z}_v(\omega) = R_v + j\omega L_v$ (`src/virtual_impedance.py`), and radial peak current limiting (`src/current_control.py`) to an AC Thévenin equivalent grid ($\text{SCR}$, $X_g/R_g$), cross-validated against `scipy.integrate.solve_ivp`.
+- **14-State Electromagnetic Synchronous-$dq$ $LCL$ Plant & Cascaded Dual-Loop PI Control (`src/dq_frames.py`, `src/lcl_plant.py`, `src/cascaded_control.py`):** Couples the 6-state electromagnetic $LCL$ output filter ($L_1, C_f, R_d, L_2$) and Thévenin AC grid ($R_g, L_g$) with synchronous-$dq$ capacitor-voltage and bridge-current PI loops, $\omega C_f$ / $\omega L_1$ cross-coupling decoupling, Qoria partial load-current feedforward ($F_i = 0.75$), SVPWM linear modulation clamping, radial peak current saturation, and conditional anti-windup.
+- **4-State Quasi-Stationary Coupled Thévenin GFM Model (`src/thevenin_network.py`):** Couples a Virtual Synchronous Generator (`VSG`) swing equation, outer $Q\text{--}V$ droop (`src/droop_control.py`), and stationary $\alpha\beta$ virtual impedance (`src/virtual_impedance.py`), cross-validated against `scipy.integrate.solve_ivp` and shown to match the 14-state electromagnetic model on macro-timescales.
 - **Fail-Closed Voltage-Sag / FRT Benchmark (`src/benchmark.py`):** Positive-sequence discrete-time sag response with exact half-open fault windowing, independent $\alpha\beta$ power-residual verification, windowed RoCoF separation, and post-fault recovery checks.
 
 ![Closed-Loop Grid-Forming VSG & Thévenin Network Response](results/inverter_transient_response.png)
+
+![14-State Electromagnetic dq LCL Plant & Cascaded Dual-Loop PI Response](results/lcl_cascaded_electromagnetic_response.png)
 
 ## Quick Start
 
@@ -26,23 +29,33 @@ The historical script entry point `python src/benchmark.py` is also preserved.
 
 ## Governing Equations
 
-### 1. Closed-Loop Coupled VSG + Virtual Impedance + Thévenin Grid (`src/thevenin_network.py`)
+### 1. 14-State Synchronous-$dq$ Electromagnetic $LCL$ + Cascaded PI GFM (`src/lcl_plant.py`, `src/cascaded_control.py`)
 
-Using amplitude-invariant Clarke ($\alpha\beta$) peak phase quantities ($P = \frac{3}{2}(v_\alpha i_\alpha + v_\beta i_\beta)$, $Q = \frac{3}{2}(v_\beta i_\alpha - v_\alpha i_\beta)$), the 4-state electromechanical GFM model integrates rotor angle $\delta$, virtual angular velocity $\omega$, and low-pass filtered powers $(P_{\text{filt}}, Q_{\text{filt}})$:
+In the inverter's synchronous Park $dq$ reference frame rotating at virtual rotor speed $\omega(t)$ ($\mathbf{J} = \begin{bmatrix}0 & -1 \\ 1 & 0\end{bmatrix}$), the 6 electromagnetic $LCL$ + Thévenin network states $\mathbf{x}_{\text{lcl}} = [i_{1d}, i_{1q}, v_{cd}, v_{cq}, i_{2d}, i_{2q}]^\top$ satisfy:
+
+$$\mathbf{v}_{f,dq} = \mathbf{v}_{c,dq} + R_d (\mathbf{i}_{1,dq} - \mathbf{i}_{2,dq})$$
+
+$$L_1 \frac{d\mathbf{i}_{1,dq}}{dt} = \mathbf{v}_{\text{inv},dq} - \mathbf{v}_{f,dq} - R_1 \mathbf{i}_{1,dq} - \omega \mathbf{J} L_1 \mathbf{i}_{1,dq}, \qquad C_f \frac{d\mathbf{v}_{c,dq}}{dt} = (\mathbf{i}_{1,dq} - \mathbf{i}_{2,dq}) - \omega \mathbf{J} C_f \mathbf{v}_{c,dq}$$
+
+$$(L_2 + L_g) \frac{d\mathbf{i}_{2,dq}}{dt} = \mathbf{v}_{f,dq} - \mathbf{v}_{g,dq}(\delta) - (R_2 + R_g) \mathbf{i}_{2,dq} - \omega \mathbf{J} (L_2 + L_g) \mathbf{i}_{2,dq}$$
+
+Because $\mathbf{x}^\top \mathbf{J} \mathbf{x} \equiv 0$, rotational cross-coupling performs zero net work and total instantaneous three-phase electromagnetic energy $\mathcal{E} = \frac{3}{2}\left[\frac{1}{2}L_1|\mathbf{i}_1|^2 + \frac{1}{2}C_f|\mathbf{v}_c|^2 + \frac{1}{2}(L_2+L_g)|\mathbf{i}_2|^2\right]$ obeys exact passivity balance $\dot{\mathcal{E}} + P_{\text{loss}} = P_{\text{inv}} - P_{\text{grid}}$. Timescale-separated IMC dual-loop PI controllers ($f_{bw,i} = 1.0\text{ kHz}$, $f_{bw,v} = 180\text{ Hz}$) with partial load-current feedforward ($F_i = 0.75$, following Qoria et al., *IEEE TPEL*, 2020) maintain strict small-signal Hurwitz stability ($\max_k \operatorname{Re}(\lambda_k) < -4.2\text{ s}^{-1}$), whereas unity feedforward ($F_i = 1.0$) destabilizes the sub-synchronous electromagnetic flux mode.
+
+### 2. 4-State Quasi-Stationary VSG + Thévenin Grid (`src/thevenin_network.py`)
 
 $$J \frac{d\omega}{dt} = \frac{P_{\text{ref}}(t) - P_{\text{filt}}}{\omega_0} - D_p (\omega - \omega_0), \qquad \frac{d\delta}{dt} = \omega - \omega_g(t)$$
 
 $$E^*(t) = \operatorname{clamp}\!\left(E_0 - n_q (Q_{\text{filt}} - Q_{\text{ref}}),\; 0.75 E_0,\; 1.20 E_0\right)$$
 
-With internal EMF $\mathbf{e}_{\alpha\beta} = E^* [\cos\delta,\, \sin\delta]^\top$ and stiff/weak grid bus $\mathbf{v}_{g,\alpha\beta} = [V_g,\, 0]^\top$, total series impedance $\mathbf{Z}_{\text{tot}}(\omega) = (R_v + R_g) + j(\omega L_v + \omega_g L_g)$ yields the unsaturated network current before radial current limiting ($|\mathbf{i}_{\alpha\beta}| \le I_{\max}$). Under a $-0.20\text{ Hz}$ grid frequency drop ($49.80\text{ Hz}$), steady-state synchronizing lock satisfies $\omega_{\infty} = \omega_g$ and delivers exact primary frequency droop support $\Delta P_{\infty} = D_p \omega_0 (\omega_0 - \omega_g)$.
+Under a $10\text{ kW}$ step followed by a $-0.20\text{ Hz}$ grid frequency drop ($49.80\text{ Hz}$), both the 4-state quasi-static solver and the 14-state electromagnetic $LCL$ solver converge to the primary droop equilibrium ($f_\infty = 49.80\text{ Hz}$, $P_\infty \approx 17.88\text{--}17.90\text{ kW}$, nadir $49.748\text{ Hz}$).
 
-### 2. Reduced-Order Prescribed-Sag FRT Benchmark (`src/benchmark.py`)
+### 3. Reduced-Order Prescribed-Sag FRT Benchmark (`src/benchmark.py`)
 
 `src/benchmark.py` evaluates positive-sequence algebraic P/Q current commands under a prescribed `0.5 pu` voltage sag on `[0.300, 0.600) s` with radial peak current limiting (`30 A` peak), verifying simultaneous $V\text{--}I$ power consistency, fault-windowed RoCoF (`0.5139 Hz/s`), and post-clearing recovery (`0.079 s`).
 
 ## Scope & Engineering Limitations
 
-This repository models positive-sequence fundamental-frequency / averaged dynamic control blocks and Thévenin network equivalents. In Module 1 (`v0.2.0`), PWM switching harmonics, semiconductor thermal limits, DC-link capacitor dynamics, negative/zero-sequence unbalanced faults, and electromagnetic $LCL$ differential filter states are not yet modeled (addressed progressively in subsequent modules). Passing tests and benchmarks verify **mathematical and software consistency for the documented models only**—they are not evidence of real-hardware performance, grid-code compliance, or equipment certification.
+This repository models balanced three-phase (positive-sequence) averaged inverter bridge modulation, $LCL$ filter electromagnetics, cascaded $dq$ control loops, and Thévenin AC grid equivalents. In Module 2 (`v0.3.0`), discrete PWM switching ripple, dead-time distortion, semiconductor junction thermal limits, DC-link capacitor energy balance, and unbalanced negative/zero-sequence faults are not modeled. Passing tests and benchmarks verify **mathematical and software consistency for the documented models only**—they are not evidence of real-hardware performance, grid-code compliance, or equipment certification.
 
 ## Citation
 
