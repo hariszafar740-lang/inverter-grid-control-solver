@@ -1,0 +1,26 @@
+name: Bug Report
+description: Report a numerical, physical modeling, or software defect
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Defect Summary
+      description: Clear description of the numerical or control-loop discrepancy.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal Reproduction
+      description: Commands or Python snippet that reproduce the issue.
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Python & OS Environment
+      placeholder: "Python 3.12, Ubuntu 24.04"
+    validations:
+      required: true

@@ -1,0 +1,19 @@
+name: Feature / Control Law Proposal
+description: Propose a new inverter control block, plant model, or stability benchmark
+title: "[Feat]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Engineering Motivation & Equations
+      description: Governing differential/algebraic equations and literature reference.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification Strategy
+      description: Analytical closed-form invariant or SciPy ODE reference test.
+    validations:
+      required: true

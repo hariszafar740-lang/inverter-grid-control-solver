@@ -1,6 +1,8 @@
-import pytest
 import numpy as np
+import pytest
+
 from src.virtual_impedance import VirtualImpedanceController
+
 
 def test_zero_current_no_voltage_drop():
     v_imp = VirtualImpedanceController(r_v_ohm=0.2, l_v_h=3e-3)

@@ -11,22 +11,38 @@ permissions:
 
 jobs:
   test:
+    name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - name: Install Dependencies
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
-      - name: Run Test Suite
-        run: python -m pytest -q --strict-markers tests/
-      - name: Lint Source and Tests
-        run: python -m ruff check --select E4,E7,E9,F src tests main.py
-      - name: Compile Python Modules
+
+      - name: Lint with Ruff
+        run: python -m ruff check .
+
+      - name: Compile Python modules
         run: python -m compileall -q src tests main.py
-      - name: Execute FRT Benchmark
+
+      - name: Execute closed-loop Thévenin benchmark & figure check
+        run: python main.py
+
+      - name: Execute reduced-order FRT acceptance benchmark
         run: python -m src.benchmark
+
+      - name: Run pytest suite
+        run: python -m pytest -v
