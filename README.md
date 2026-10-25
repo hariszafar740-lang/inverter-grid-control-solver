@@ -6,10 +6,12 @@
 
 Physics-based Python simulation and verification framework for **Grid-Forming (GFM) and Grid-Following (GFL) Inverter Control**:
 
+- **14-State Electromagnetic Fault Ride-Through (`FRT`), `-45 deg` Phase Jump, Threshold Transient Virtual Impedance (`TVI`) & Power Anti-Windup (`src/transient_virtual_impedance.py`, `src/em_frt_benchmark.py`):** Contrasts unprotected overcurrent spikes (`160.2 A = 3.91 pu`), Qoria circular current-limiter latch-up & virtual-rotor windup (`440.7 deg` under a `0.15 pu` sag; `344.7 deg` under a `-45 deg` phase jump), and coordinated **`TVI + Synchronizing Power-Loop Anti-Windup` (`PAW`)** (`|i_{1,dq}| <= 47.95 A <= I_{max}`, `0.1%` voltage-loop saturation, `max delta = 27.5 deg`, zero cycle slips).
 - **Weak-Grid `SCR` Collapse Benchmark — `GFL (SRF-PLL)` vs. `GFM` (`src/gfl_pll.py`, `src/weak_grid_benchmark.py`):** Couples an 11-state Synchronous Reference Frame Phase-Locked Loop (`SRF-PLL`) + inner $dq$ current PI Grid-Following model to the identical 6-state electromagnetic $dq$ $LCL$ + Thévenin network plant, quantifying both **bandwidth-dependent PLL–impedance Hopf bifurcation** ($\text{SCR}_{\text{crit}}(f_{bw,\text{pll}})$) and **static nose-curve saddle-node Loss of Synchronism (`LOS`)** during parallel-line opening (`SCR: 4.0 -> 1.22`).
 - **Comparative GFM Control Triad (`src/gfm_triad.py`, `src/dvoc_control.py`):** Evaluates three canonical GFM primary synchronizing laws side-by-side on the identical 6-state electromagnetic $dq$ $LCL$ plant + cascaded dual-loop PI architecture: **13-State Multi-Loop Droop**, **14-State Virtual Synchronous Generator (`VSG`)**, and **12-State Nonlinear Andronov-Hopf Dispatchable Virtual Oscillator Control (`dVOC`)** with black-start limit-cycle self-excitation.
-- **14-State Electromagnetic Synchronous-$dq$ $LCL$ Plant & Cascaded Dual-Loop PI Control (`src/dq_frames.py`, `src/lcl_plant.py`, `src/cascaded_control.py`):** Couples the 6-state electromagnetic $LCL$ output filter ($L_1, C_f, R_d, L_2$) and Thévenin AC grid ($R_g, L_g$) with synchronous-$dq$ capacitor-voltage and bridge-current PI loops, $\omega C_f$ / $\omega L_1$ cross-coupling decoupling, Qoria partial load-current feedforward ($F_i = 0.75$), SVPWM linear modulation clamping, radial peak current saturation, and conditional anti-windup.
-- **4-State Quasi-Stationary Coupled Thévenin GFM Model & Fail-Closed FRT Benchmark (`src/thevenin_network.py`, `src/benchmark.py`):** Couples a `VSG` swing equation, outer $Q\text{--}V$ droop (`src/droop_control.py`), and stationary $\alpha\beta$ virtual impedance (`src/virtual_impedance.py`), alongside positive-sequence voltage-sag Fault Ride-Through (`FRT`) verification.
+- **14-State Electromagnetic Synchronous-$dq$ $LCL$ Plant, 4-State Thévenin Baseline & Fail-Closed Algebraic FRT CLI (`src/lcl_plant.py`, `src/cascaded_control.py`, `src/thevenin_network.py`, `src/benchmark.py`):** Full electromagnetic $LCL$ + Thévenin network passivity verification, IMC dual-loop PI tuning with Qoria partial feedforward ($F_i = 0.75$), and discrete-time positive-sequence sag checks.
+
+![14-State Electromagnetic FRT, TVI, Anti-Windup & Phase-Jump Response](results/em_frt_tvi_phase_jump_response.png)
 
 ![Weak-Grid SCR Stability & Line-Opening Collapse: GFL vs GFM](results/gfl_vs_gfm_weak_grid_collapse.png)
 
@@ -32,21 +34,29 @@ python -m pytest -v
 
 The historical script entry point `python src/benchmark.py` is also preserved.
 
-## Weak-Grid `SCR` Stability & Line-Opening Collapse (`20 kVA`, $P_{\text{ref}} = 15\text{ kW} = 0.75\text{ pu}$, `X/R = 7.0`)
+## 14-State Electromagnetic `FRT` & `-45 deg` Grid Phase-Jump Summary (`20 kVA`, `SCR = 4.0`, $I_{\max} = 48.0\text{ A}$)
 
-Sweeping grid Short-Circuit Ratio from `SCR = 6.0` down to `1.15` on the identical 6-state electromagnetic $dq$ $LCL$ filter + Thévenin network plant, followed by a sudden parallel-line opening contingency (`SCR: 4.0 -> 1.22` at $t = 0.30\text{ s}$, $dt = 80\text{ }\mu\text{s}$):
+Evaluating deep symmetrical three-phase voltage fault ride-through ($V_g: 1.00 \to 0.15\text{ pu}$ on $[0.20, 0.65)\text{ s}$ at $P_{\text{ref}} = 17\text{ kW} = 0.85\text{ pu}$) and an instantaneous $-45^\circ$ grid phase jump ($t = 0.20\text{ s}$ at $P_{\text{ref}} = 12\text{ kW}$) on the 14-state electromagnetic $dq$ $LCL$ `VSG` plant ($H = 1.97\text{ s}$, $I_{\text{th}} = 39.0\text{ A}$, $\sigma_{XR} = 5.0$, $dt = 80\text{ }\mu\text{s}$):
+
+| Contingency & Protection Mode | Peak Bridge $|\mathbf{i}_{1,dq}|$ | Max $|\delta_{\text{rel}}(t)|$ | Voltage-Loop Sat. Duty | Fault / Event $\bar{Q}_{\text{pcc}}$ | Post-Event $P_{\text{pcc}}$ | Ride-Through |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`0.15 pu` Sag — Unprotected** | `160.23 A` (`3.91 pu`) | `71.6 deg` | `0.0%` | `+26.53 kvar` | `16.69 kW` | Fail (Overcurrent) |
+| **`0.15 pu` Sag — Hard Clamp Only** | `52.01 A` | `440.7 deg` | `81.7%` | `+4.87 kvar` | `-17.87 kW` | Fail (Windup `LOS`) |
+| **`0.15 pu` Sag — `TVI` Only** | `48.00 A` | `386.5 deg` | `40.6%` | `+6.75 kvar` | `19.08 kW` | Fail (`1` Cycle Slip) |
+| **`0.15 pu` Sag — `TVI + Power AW`** | **`47.95 A`** (`<= 48 A`) | **`27.5 deg`** | **`0.1%`** | **`+8.28 kvar`** | **`16.98 kW`** | **Pass (Zero Slips)** |
+| **`-45 deg` Jump — Unprotected** | `142.76 A` (`3.48 pu`) | `58.3 deg` | `0.0%` | `+2.33 kvar` | `12.00 kW` | Fail (Overcurrent) |
+| **`-45 deg` Jump — Hard Clamp Only** | `51.40 A` | `344.7 deg` | `81.5%` | `-16.09 kvar` | `-15.62 kW` | Fail (Qoria Latch-Up) |
+| **`-45 deg` Jump — `TVI + Power AW`** | **`46.86 A`** (`<= 48 A`) | **`58.2 deg`** | **`0.0%`** | `-7.37 kvar` | **`12.21 kW`** | **Pass (Zero Slips)** |
+
+## Weak-Grid `SCR` Stability & Line-Opening Collapse (`20 kVA`, $P_{\text{ref}} = 15\text{ kW} = 0.75\text{ pu}$, `X/R = 7.0`)
 
 | Control Architecture | ODE States | Critical `SCR_crit` (Hopf) | Equilibrium @ `SCR = 1.15` | Line-Trip `SCR 4.0 -> 1.22` | Min $|\mathbf{v}_{\text{pcc}}|$ | Max $|\delta(t)|$ |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GFL `SRF-PLL` (`55 Hz` Fast)** | `11` | `2.99` | None (`SCR_static ~ 1.33`) | Unbounded Pole-Slipping (`LOS`) | `< 0.05 pu` | `> 3,500 deg` |
-| **GFL `SRF-PLL` (`35 Hz` Nominal)** | `11` | `1.80` | None (`SCR_static ~ 1.33`) | Unbounded Pole-Slipping (`LOS`) | `0.048 pu` | `4,250.0 deg` |
-| **GFL `SRF-PLL` (`10 Hz` Slow)** | `11` | `1.67` | None (`SCR_static ~ 1.33`) | Unbounded Pole-Slipping (`LOS`) | `0.008 pu` | `4,536.3 deg` |
+| **GFL `SRF-PLL` (`55 / 35 / 10 Hz`)** | `11` | `2.99 / 1.80 / 1.67` | None (`SCR_static ~ 1.33`) | Unbounded Pole-Slipping (`LOS`) | `<= 0.048 pu` | `> 4,200 deg` |
 | **GFM `VSG` (`H = 4.93 s`)** | `14` | `< 1.15` (`-3.97 s^-1`) | `0.954 pu`, `47.2 deg` | Synchronized Ride-Through | `0.937 pu` | `43.5 deg` |
 | **GFM `dVOC` (Andronov-Hopf)** | `12` | `< 1.15` (`-2.65 s^-1`) | `0.953 pu`, `45.1 deg` | Synchronized Ride-Through | `0.924 pu` | `40.8 deg` |
 
 ## Comparative GFM Control Triad Summary (`20 kVA`, `SCR = 6.0`, `X/R = 7.0`)
-
-Under an identical $+10\text{ kW}$ active-power dispatch step ($t = 0.25\text{ s}$) followed by a $-0.20\text{ Hz}$ grid frequency drop ($t = 1.15\text{ s}$) on the 6-state $dq$ $LCL$ + cascaded PI plant ($dt = 80\text{ }\mu\text{s}$):
 
 | GFM Architecture | Total ODE States | Power LPF | Step Rise $t_{90}$ | Grid-Drop Peak $P_{\text{pcc}}$ | Frequency Nadir | Steady $P_{\text{pcc},\infty}$ | Max $\operatorname{Re}(\lambda)$ (`SCR=6` / `SCR=2`) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -56,35 +66,27 @@ Under an identical $+10\text{ kW}$ active-power dispatch step ($t = 0.25\text{ s
 
 ## Governing Equations
 
-### 1. Weak-Grid `SRF-PLL` Impedance Coupling & Pole-Slipping `LOS` (`src/gfl_pll.py`, `src/weak_grid_benchmark.py`)
+### 1. Threshold Transient Virtual Impedance (`TVI`) & Synchronizing Power Anti-Windup (`src/transient_virtual_impedance.py`, `src/em_frt_benchmark.py`)
 
-In the PLL estimated rotating frame $\theta_{\text{pll}}(t)$ ($\delta_{\text{pll}} = \theta_{\text{pll}} - \theta_g$), the normalized Synchronous Reference Frame PLL and $q$-axis filter-capacitor terminal voltage satisfy:
+Above sensed peak current $I_{\text{th}}$, `TVI` augments base virtual impedance $Z_v = R_v + j\omega L_v$ while `PAW` derates accelerating swing power during deep PCC voltage depressions (Paquette & Divan, *IEEE TIA*, 2015; Qoria et al., *IEEE TPEL*, 2020; Taul et al., *IEEE JESTPE*, 2020; Rokrok et al., *IEEE TPWRS*, 2022):
 
-$$\dot{\delta}_{\text{pll}} = \omega_{\text{pll}} - \omega_g, \qquad \omega_{\text{pll}} = \omega_0 + K_{p,\text{pll}}\frac{v_{fq}}{V_0} + K_{i,\text{pll}}\xi_{\text{pll}}, \qquad \dot{\xi}_{\text{pll}} = \frac{v_{fq}}{V_0}$$
+$$\Delta R_v(|\mathbf{i}|) = k_{\text{tvi}}\max(0,\, |\mathbf{i}| - I_{\text{th}}), \qquad \Delta X_v(|\mathbf{i}|, \omega) = \sigma_{XR}\,\frac{\omega}{\omega_0}\,\Delta R_v(|\mathbf{i}|), \qquad k_{\text{tvi}} = \frac{c_m V_0 / I_{\max} - |Z_{v,0}|}{(I_{\max} - I_{\text{th}})\sqrt{1 + \sigma_{XR}^2}}$$
 
-$$v_{fq} = -V_g \sin(\delta_{\text{pll}}) + R_{\text{net}} i_{2q} + \omega_{\text{pll}} L_{\text{net}} i_{2d} + L_{\text{net}}\frac{di_{2q}}{dt}$$
+$$P_{\text{ref,eff}} = P_{\text{ref}}\cdot \begin{cases}(|\mathbf{v}_{\text{pcc}}|/V_0)^{\gamma_v}, & |\mathbf{v}_{\text{pcc}}|/V_0 < V_{\text{knee}} \\ 1, & \text{otherwise}\end{cases} \;-\; K_{\text{aw}}\max(0,\, |\mathbf{i}| - I_{\text{th}})$$
 
-In weak grids ($L_{\text{net}}$ large, `SCR` low) under high active current $i_{2d}$, perturbations in $\omega_{\text{pll}}$ feed back positively into $v_{fq}$ through $+\omega_{\text{pll}} L_{\text{net}} i_{2d}$ (Wen et al., *IEEE TPEL*, 2016; Dong et al., *IEEE TPWRS*, 2015), causing RHP Hopf instability at higher `SCR` as $f_{bw,\text{pll}}$ increases (`2.99` at `55 Hz` vs. `1.67` at `10 Hz`). Below the static nose-curve limit ($X_{\text{net}} i_{2d} > V_g$, $\text{SCR}_{\text{static}} \approx 1.33$ at `0.75 pu`), $v_{fq} > 0$ for all $\delta_{\text{pll}}$, driving unbounded PLL acceleration and cycle-slipping regardless of PLL tuning.
+Preserving unsaturated outer voltage-loop regulation prevents circular current-clamp latch-up under severe grid phase jumps while bounding $|\mathbf{i}_{1,dq}| \le I_{\max}$ and eliminating virtual-rotor angle windup during prolonged deep faults.
 
-### 2. Nonlinear Andronov-Hopf `dVOC` (`src/dvoc_control.py`, `src/gfm_triad.py`)
+### 2. Weak-Grid `SRF-PLL` Impedance Coupling & Pole-Slipping `LOS` (`src/gfl_pll.py`, `src/weak_grid_benchmark.py`)
 
-In three-phase amplitude-invariant Clarke $\alpha\beta$ coordinates with inductive rotation $\mathbf{R}(\pi/2) = \mathbf{J}$, the Dispatchable Virtual Oscillator evolves according to:
+In weak inductive grids ($L_{\text{net}}$ large, `SCR` low), $v_{fq} = -V_g \sin(\delta_{\text{pll}}) + R_{\text{net}} i_{2q} + \omega_{\text{pll}} L_{\text{net}} i_{2d} + L_{\text{net}}\,di_{2q}/dt$ creates positive feedback $+\omega_{\text{pll}} L_{\text{net}} i_{2d}$ into $\omega_{\text{pll}}$, triggering bandwidth-dependent Hopf instability (`SCR_crit = 2.99 / 1.80 / 1.67` at `55 / 35 / 10 Hz`) above the static nose-curve collapse (`SCR_static ~ 1.33`).
 
-$$\dot{\mathbf{v}}_{\alpha\beta} = \omega_0 \mathbf{J}\mathbf{v}_{\alpha\beta} + \eta \left(\mathbf{K}(P_{\text{ref}}, Q_{\text{ref}})\,\mathbf{v}_{\alpha\beta} - \frac{3}{2}\mathbf{J}\mathbf{i}_{\alpha\beta}\right) + \eta \alpha_{\text{osc}}\frac{V_0^2 - \|\mathbf{v}_{\alpha\beta}\|^2}{V_0^2}\mathbf{v}_{\alpha\beta}$$
+### 3. Nonlinear Andronov-Hopf `dVOC` & 14-State Synchronous-$dq$ $LCL$ Plant (`src/dvoc_control.py`, `src/lcl_plant.py`, `src/cascaded_control.py`)
 
-Matching nominal small-signal slopes ($\eta = m_p V_0^2 = 16.84\text{ V}^2/(\text{W}\cdot\text{s})$, $\alpha_{\text{osc}} = 1/(2 n_q V_0) = 1.281\text{ W/V}^2$) yields exact polar kinetics $(\dot{\theta}, \dot{\hat{V}})$ without power-measurement low-pass filters and global unloaded Bernoulli limit-cycle self-excitation from non-zero black-start seeds.
-
-### 3. 14-State Synchronous-$dq$ Electromagnetic $LCL$ + Cascaded PI GFM (`src/lcl_plant.py`, `src/cascaded_control.py`)
-
-In the inverter's synchronous Park $dq$ reference frame rotating at virtual speed $\omega(t)$, the 6 electromagnetic $LCL$ + Thévenin network states $\mathbf{x}_{\text{lcl}} = [i_{1d}, i_{1q}, v_{cd}, v_{cq}, i_{2d}, i_{2q}]^\top$ obey exact rotational passivity ($\mathbf{x}^\top \mathbf{J} \mathbf{x} \equiv 0$). Timescale-separated IMC dual-loop PI controllers ($f_{bw,i} = 1.0\text{ kHz}$, $f_{bw,v} = 180\text{ Hz}$) with Qoria partial load-current feedforward ($F_i = 0.75$) maintain strict small-signal Hurwitz stability across `Droop`, `VSG`, and `dVOC` down to ultra-weak `SCR = 1.15`.
-
-### 4. 4-State Quasi-Stationary VSG + Thévenin Grid & FRT Benchmark (`src/thevenin_network.py`, `src/benchmark.py`)
-
-Module `src/thevenin_network.py` solves the 4-state electromechanical VSG swing + $Q\text{--}V$ droop + virtual impedance system, while `src/benchmark.py` evaluates positive-sequence algebraic P/Q current commands under a prescribed `0.5 pu` voltage sag on `[0.300, 0.600) s` with radial peak current limiting (`30 A` peak), fault-windowed RoCoF (`0.5139 Hz/s`), and post-clearing recovery (`0.079 s`).
+The shared 6-state electromagnetic $LCL$ + Thévenin network plant $\mathbf{x}_{\text{lcl}} = [i_{1d}, i_{1q}, v_{cd}, v_{cq}, i_{2d}, i_{2q}]^\top$ obeys exact rotational passivity ($\mathbf{x}^\top \mathbf{J} \mathbf{x} \equiv 0$) and couples cleanly to `Droop`, `VSG`, and `dVOC` ($\dot{\mathbf{v}}_{\alpha\beta}$ Andronov-Hopf oscillator with global unloaded Bernoulli black-start convergence).
 
 ## Scope & Engineering Limitations
 
-This repository models balanced three-phase (positive-sequence) averaged inverter bridge modulation, $LCL$ filter electromagnetics, cascaded $dq$ / `SRF-PLL` control loops, and Thévenin AC grid equivalents. In Module 4 (`v0.5.0`), discrete PWM switching ripple, dead-time distortion, semiconductor junction thermal limits, DC-link capacitor energy balance, and unbalanced negative/zero-sequence faults are not modeled. Passing tests and benchmarks verify **mathematical and software consistency for the documented models only**—they are not evidence of real-hardware performance, grid-code compliance, or equipment certification.
+This repository models balanced three-phase (positive-sequence) averaged inverter bridge modulation, $LCL$ filter electromagnetics, cascaded $dq$ / `SRF-PLL` / `TVI` control loops, and Thévenin AC grid equivalents. In Module 5 (`v0.6.0`), discrete PWM switching ripple, dead-time distortion, semiconductor junction thermal limits, DC-link capacitor energy balance, and unbalanced negative/zero-sequence faults are not modeled. Passing tests and benchmarks verify **mathematical and software consistency for the documented models only**—they are not evidence of real-hardware performance, grid-code compliance, or equipment certification.
 
 ## Citation
 

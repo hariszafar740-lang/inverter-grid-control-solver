@@ -1,4 +1,4 @@
-"""Grid-Forming & Grid-Following Inverter Control, Electromagnetic LCL Plant & Thévenin Solver."""
+"""Grid-Forming & Grid-Following Inverter Control, Electromagnetic LCL Plant & FRT Solver."""
 
 from typing import TYPE_CHECKING
 
@@ -23,6 +23,15 @@ from .dvoc_control import (
     DispatchableVirtualOscillator,
     DVOCConfig,
 )
+from .em_frt_benchmark import (
+    ElectromagneticFRTBenchmarkResult,
+    ElectromagneticFRTTrajectory,
+    ElectromagneticFRTVSGModel,
+    ProtectionMode,
+    run_electromagnetic_frt_benchmark,
+    simulate_em_fault_sag,
+    simulate_em_phase_jump,
+)
 from .gfl_pll import (
     ElectromagneticGFLModel,
     SRFPLLConfig,
@@ -45,10 +54,12 @@ from .thevenin_network import (
     TheveninGridSpec,
     simulate_coupled_vsg_transient,
 )
+from .transient_virtual_impedance import TransientVirtualImpedance, TVIConfig
 from .virtual_impedance import VirtualImpedanceController
 from .virtual_inertia import VirtualInertiaEngine
 from .visualizer import (
     plot_closed_loop_thevenin_benchmark,
+    plot_electromagnetic_frt_benchmark,
     plot_gfm_triad_benchmark,
     plot_inverter_response,
     plot_lcl_cascaded_electromagnetic_benchmark,
@@ -73,7 +84,7 @@ if TYPE_CHECKING:
         validate_frt_benchmark_results,
     )
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 _BENCHMARK_EXPORTS = frozenset(
     {
@@ -92,6 +103,9 @@ __all__ = [
     "CoupledVSGTheveninModel",
     "DVOCConfig",
     "DispatchableVirtualOscillator",
+    "ElectromagneticFRTBenchmarkResult",
+    "ElectromagneticFRTTrajectory",
+    "ElectromagneticFRTVSGModel",
     "ElectromagneticGFLModel",
     "ElectromagneticGFMModel",
     "ElectromagneticTransientResult",
@@ -104,10 +118,13 @@ __all__ = [
     "MultiLoopDVOCGFMModel",
     "MultiLoopDroopGFMModel",
     "PowerMeasurementLPF",
+    "ProtectionMode",
     "SCRStabilityPoint",
     "SRFPLLConfig",
     "SynchronousReferenceFramePLL",
+    "TVIConfig",
     "TheveninGridSpec",
+    "TransientVirtualImpedance",
     "VirtualImpedanceController",
     "VirtualInertiaEngine",
     "WeakGridArchitecture",
@@ -124,16 +141,20 @@ __all__ = [
     "dq_to_alphabeta",
     "estimate_critical_scr",
     "plot_closed_loop_thevenin_benchmark",
+    "plot_electromagnetic_frt_benchmark",
     "plot_gfm_triad_benchmark",
     "plot_inverter_response",
     "plot_lcl_cascaded_electromagnetic_benchmark",
     "plot_weak_grid_scr_benchmark",
     "rotate_dq_frame",
+    "run_electromagnetic_frt_benchmark",
     "run_fault_ride_through_benchmark",
     "run_gfm_triad_benchmark",
     "run_weak_grid_scr_benchmark",
     "simulate_coupled_vsg_transient",
     "simulate_electromagnetic_gfm_transient",
+    "simulate_em_fault_sag",
+    "simulate_em_phase_jump",
     "simulate_gfm_mode_transient",
     "simulate_lcl_damping_step",
     "simulate_weak_grid_line_trip",
