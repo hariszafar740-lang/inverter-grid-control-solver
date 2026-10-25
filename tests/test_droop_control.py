@@ -1,6 +1,8 @@
-import pytest
 import numpy as np
+import pytest
+
 from src.droop_control import InverterDroopController
+
 
 def test_nominal_droop_setpoints():
     controller = InverterDroopController(w0=2*np.pi*50.0, v0=400.0)

@@ -1,44 +1,54 @@
-import numpy as np
-from src.power_measurement import PowerMeasurementLPF
-from src.virtual_inertia import VirtualInertiaEngine
-from src.virtual_impedance import VirtualImpedanceController
-from src.visualizer import plot_inverter_response
+"""Reproducible closed-loop Thévenin GFM & reduced-order FRT benchmark entry point."""
 
-def main():
-    dt_s = 1e-3
-    p_meter = PowerMeasurementLPF(cutoff_freq_hz=10.0, dt=dt_s)
-    vsm = VirtualInertiaEngine(j_kgm2=2.0, dp=15.0, dt=dt_s)
-    v_imp = VirtualImpedanceController(r_v_ohm=0.1, l_v_h=2.5e-3)
-    
-    time_array = np.arange(0.0, 1.0 + 0.5 * dt_s, dt_s)
-    
-    f_vsm_hist = []
-    p_filt_hist = []
-    v_ref_mod_mag = []
-    
-    for t in time_array:
-        i_alpha = 0.0 if t < 0.2 else 45.0
-        i_beta = 0.0 if t < 0.2 else -15.0
-        
-        p_filt, _ = p_meter.update(v_alpha=325.27, v_beta=0.0, i_alpha=i_alpha, i_beta=i_beta)
-        w_vsm, f_vsm, _ = vsm.step(p_ref=0.0, p_meas=p_filt)
-        v_a_mod, v_b_mod = v_imp.apply_virtual_impedance(325.27, 0.0, i_alpha, i_beta, w_inst=w_vsm)
-        
-        f_vsm_hist.append(f_vsm)
-        p_filt_hist.append(p_filt)
-        v_ref_mod_mag.append(np.sqrt(v_a_mod**2 + v_b_mod**2))
-        
-    plot_inverter_response(time_array, f_vsm_hist, p_filt_hist, v_ref_mod_mag, save_path='results/inverter_transient_response.png')
-    
-    print("=" * 75)
-    print("DAY 19: GRID-FORMING INVERTER TRANSIENT VISUALIZATION & EVALUATION")
-    print("=" * 75)
-    print(f"Pre-Event Frequency (t = 0.1s):       {f_vsm_hist[100]:.3f} Hz")
-    print(f"Frequency Nadir:                     {min(f_vsm_hist):.3f} Hz")
-    print(f"Steady-State Frequency (t = 1.0s):   {f_vsm_hist[-1]:.3f} Hz")
-    print(f"Peak Measured Active Power:          {max(p_filt_hist)/1000.0:.2f} kW")
-    print(f"Virtual Impedance Drop Magnitude:    {v_ref_mod_mag[0] - v_ref_mod_mag[-1]:.2f} V")
-    print("=" * 75)
+from __future__ import annotations
+
+from pathlib import Path
+
+from src.benchmark import run_fault_ride_through_benchmark, validate_frt_benchmark_results
+from src.thevenin_network import TheveninGridSpec, simulate_coupled_vsg_transient
+from src.visualizer import plot_closed_loop_thevenin_benchmark
+
+
+def generate_reference_transient_figure(
+    save_path: str | Path = "results/inverter_transient_response.png",
+):
+    """Run the canonical closed-loop Thévenin GFM benchmark and write the 4-panel figure."""
+    spec = TheveninGridSpec()
+    res = simulate_coupled_vsg_transient(spec)
+    out = plot_closed_loop_thevenin_benchmark(res, save_path=save_path)
+    return res, out
+
+
+def main(
+    save_path: str | Path = "results/inverter_transient_response.png",
+) -> int:
+    res, fig_path = generate_reference_transient_figure(save_path=save_path)
+    frt = run_fault_ride_through_benchmark()
+    validate_frt_benchmark_results(frt, require_current_limit=True)
+
+    print("=" * 78)
+    print("GRID-FORMING INVERTER CLOSED-LOOP THÉVENIN & FRT VERIFICATION BENCHMARK")
+    print("=" * 78)
+    print(
+        f"Grid Rating & Strength: S_rated = {res.spec.s_rated_va / 1e3:.1f} kVA | "
+        f"SCR = {res.spec.scr:.1f} | X/R = {res.spec.xr_ratio:.1f} | H = {res.spec.h_inertia_s:.2f} s"
+    )
+    print(
+        f"Closed-Loop VSG Step:   Nadir = {res.nadir_freq_hz:.3f} Hz | "
+        f"Peak RoCoF = {res.peak_rocof_hz_s:.3f} Hz/s | Peak P_pcc = {res.peak_power_kw:.2f} kW"
+    )
+    print(
+        f"Post-Droop Equilibrium: P_final = {res.final_power_kw:.2f} kW | "
+        f"delta_final = {res.final_delta_deg:.2f} deg | |V_pcc| = {res.final_v_pcc_pu:.4f} pu"
+    )
+    print(
+        f"Reduced-Order 0.5pu Sag: I_max = {frt['fault_max_current_a']:.2f} A | "
+        f"Fault RoCoF = {frt['max_rocof']:.4f} Hz/s | Settling = {frt['recovery_settling_time_s']:.3f} s"
+    )
+    print(f"Saved Figure Artifact:  {fig_path}")
+    print("=" * 78)
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software in research or engineering studies, please cite it using the metadata below."
+title: "Grid-Forming Inverter Control & Thévenin Network Dynamic Solver"
+type: software
+authors:
+  - family-names: "Zafar"
+    given-names: "Haris"
+version: 0.2.0
+date-released: "2026-10-25"
+license: MIT
+repository-code: "https://github.com/hariszafar740-lang/inverter-grid-control-solver"
+keywords:
+  - grid-forming-inverter
+  - virtual-synchronous-generator
+  - droop-control
+  - virtual-impedance
+  - fault-ride-through
+  - power-electronics

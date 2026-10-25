@@ -1,132 +1,49 @@
-# Inverter Grid Control Solver
+# Grid-Forming Inverter Control & Thévenin Network Dynamic Solver
 
-A small Python sandbox for inverter-control blocks: P–ω and Q–V droop, a
-virtual-synchronous-generator (VSG) swing equation, alpha-beta power
-measurement, virtual impedance, plotting, and a reproducible voltage-sag
-response benchmark.
+[![CI](https://github.com/hariszafar740-lang/inverter-grid-control-solver/actions/workflows/ci.yml/badge.svg)](https://github.com/hariszafar740-lang/inverter-grid-control-solver/actions/workflows/ci.yml)
+![Python Version](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Install and run
+Physics-based Python simulation and verification framework for **Grid-Forming (GFM) Inverter Control**:
 
-Python 3.10 or later is required. From a clean checkout:
+- **Closed-Loop Coupled Thévenin AC Network (`src/thevenin_network.py`):** Couples a Virtual Synchronous Generator (`VSG`) swing equation, outer $Q\text{--}V$ voltage droop (`src/droop_control.py`), stationary $\alpha\beta$ virtual impedance $\mathbf{Z}_v(\omega) = R_v + j\omega L_v$ (`src/virtual_impedance.py`), and radial peak current limiting (`src/current_control.py`) to an AC Thévenin equivalent grid ($\text{SCR}$, $X_g/R_g$), cross-validated against `scipy.integrate.solve_ivp`.
+- **Fail-Closed Voltage-Sag / FRT Benchmark (`src/benchmark.py`):** Positive-sequence discrete-time sag response with exact half-open fault windowing, independent $\alpha\beta$ power-residual verification, windowed RoCoF separation, and post-fault recovery checks.
+
+![Closed-Loop Grid-Forming VSG & Thévenin Network Response](results/inverter_transient_response.png)
+
+## Quick Start
+
+Python `3.10–3.13` is supported and tested in CI:
 
 ```bash
 python -m pip install -r requirements-dev.txt
-python -m pytest -q
+python main.py
 python -m src.benchmark
+python -m pytest -v
 ```
 
-The FRT benchmark's historical direct-script entry point also works from the
-repository root:
+The historical script entry point `python src/benchmark.py` is also preserved.
 
-```bash
-python src/benchmark.py
-```
+## Governing Equations
 
-The test and benchmark commands return a nonzero exit code on failed
-acceptance checks. The benchmark validates that a sag was actually applied,
-that event samples exist, that reported P/Q agree with simultaneous voltage
-and current, that the current limit is respected and exercised for its default
-severe-sag case, that event RoCoF is computed from the recorded VSG frequency,
-and that the declared post-fault settling window is met.
+### 1. Closed-Loop Coupled VSG + Virtual Impedance + Thévenin Grid (`src/thevenin_network.py`)
 
-## Model and equations
+Using amplitude-invariant Clarke ($\alpha\beta$) peak phase quantities ($P = \frac{3}{2}(v_\alpha i_\alpha + v_\beta i_\beta)$, $Q = \frac{3}{2}(v_\beta i_\alpha - v_\alpha i_\beta)$), the 4-state electromechanical GFM model integrates rotor angle $\delta$, virtual angular velocity $\omega$, and low-pass filtered powers $(P_{\text{filt}}, Q_{\text{filt}})$:
 
-This repository is a **simplified discrete-time dynamic control-block model**
-with algebraic, positive-sequence alpha-beta voltage/current vectors. It has
-no switching waveform or PWM model and does not solve the converter's complete
-averaged electrical state-space model or an AC network. It is therefore not an
-EMT simulation and not a validated transient-stability tool.
+$$J \frac{d\omega}{dt} = \frac{P_{\text{ref}}(t) - P_{\text{filt}}}{\omega_0} - D_p (\omega - \omega_0), \qquad \frac{d\delta}{dt} = \omega - \omega_g(t)$$
 
-The alpha-beta components use an amplitude-invariant, peak phase-equivalent
-convention (zero sequence omitted). Three-phase instantaneous power is
-calculated from the actual simultaneous samples:
+$$E^*(t) = \operatorname{clamp}\!\left(E_0 - n_q (Q_{\text{filt}} - Q_{\text{ref}}),\; 0.75 E_0,\; 1.20 E_0\right)$$
 
-```text
-P = 3/2 (v_alpha i_alpha + v_beta i_beta)
-Q = 3/2 (v_beta i_alpha - v_alpha i_beta)
-```
+With internal EMF $\mathbf{e}_{\alpha\beta} = E^* [\cos\delta,\, \sin\delta]^\top$ and stiff/weak grid bus $\mathbf{v}_{g,\alpha\beta} = [V_g,\, 0]^\top$, total series impedance $\mathbf{Z}_{\text{tot}}(\omega) = (R_v + R_g) + j(\omega L_v + \omega_g L_g)$ yields the unsaturated network current before radial current limiting ($|\mathbf{i}_{\alpha\beta}| \le I_{\max}$). Under a $-0.20\text{ Hz}$ grid frequency drop ($49.80\text{ Hz}$), steady-state synchronizing lock satisfies $\omega_{\infty} = \omega_g$ and delivers exact primary frequency droop support $\Delta P_{\infty} = D_p \omega_0 (\omega_0 - \omega_g)$.
 
-The benchmark's algebraic P/Q current reference is
+### 2. Reduced-Order Prescribed-Sag FRT Benchmark (`src/benchmark.py`)
 
-```text
-i_alpha* = (v_alpha P_ref + v_beta Q_ref) / (3/2 |V|^2)
-i_beta*  = (v_beta P_ref - v_alpha Q_ref) / (3/2 |V|^2)
-```
+`src/benchmark.py` evaluates positive-sequence algebraic P/Q current commands under a prescribed `0.5 pu` voltage sag on `[0.300, 0.600) s` with radial peak current limiting (`30 A` peak), verifying simultaneous $V\text{--}I$ power consistency, fault-windowed RoCoF (`0.5139 Hz/s`), and post-clearing recovery (`0.079 s`).
 
-A zero-voltage sample has no defined voltage-aligned P/Q command; in this
-reduced model it commands zero current and hence zero transferred P/Q. The
-current limiter radially scales both alpha-beta components to the declared
-peak-current limit. When it operates, it scales active and reactive power
-together; there is no active/reactive priority policy. Output powers are
-recomputed from the limited currents and the contemporaneous grid voltage.
-Constant-power tracking is therefore only achieved when the corresponding
-current reference is within the declared current capability.
+## Scope & Engineering Limitations
 
-The filtered active power drives the VSG frequency state:
+This repository models positive-sequence fundamental-frequency / averaged dynamic control blocks and Thévenin network equivalents. In Module 1 (`v0.2.0`), PWM switching harmonics, semiconductor thermal limits, DC-link capacitor dynamics, negative/zero-sequence unbalanced faults, and electromagnetic $LCL$ differential filter states are not yet modeled (addressed progressively in subsequent modules). Passing tests and benchmarks verify **mathematical and software consistency for the documented models only**—they are not evidence of real-hardware performance, grid-code compliance, or equipment certification.
 
-```text
-dω/dt = ((P_ref - P_meas)/ω0 - Dp(ω - ω0)) / J
-f = ω / (2π)
-```
+## Citation
 
-`P_meas` is the first-order-filtered output power. The filter uses forward
-Euler with `2π f_c dt <= 1`; the benchmark uses `f_c = 10 Hz` and `dt = 1 ms`.
-The explicit-Euler VSG damping update is checked for its linear stability
-condition. These are numerical checks for the implemented blocks, not
-validation of a physical inverter.
-
-## Default sag scenario and measured windows
-
-The default case uses a 230 V RMS phase-equivalent nominal grid voltage
-(325.27 V peak), `P_ref = 10 kW`, `Q_ref = 0`, a 30 A peak current limit, a
-50% voltage-magnitude sag from **0.300 s inclusive to 0.600 s exclusive**, and
-clearing/recovery through 1.5 s. Every event boundary is aligned to the 1 ms
-sample grid. The power filter and VSG start at the unsaturated pre-fault
-operating point; startup is not counted as fault response.
-
-At nominal voltage, the 10 kW command needs about 20.49 A peak. At 0.5 pu
-voltage it requests about 40.99 A, so the radial limiter sets actual current to
-30 A. The resulting active output is about
-`1.5 * 0.5 * 325.27 * 30 = 7.32 kW`, not the pre-fault 10 kW. The benchmark
-records voltage, alpha-beta and voltage-aligned active/reactive current
-references and outputs, current-limit state, instantaneous and filtered P/Q,
-VSG frequency and angle, event times, fault-window RoCoF, and recovery.
-
-RoCoF is the finite difference of successive VSG frequency samples, assigned
-to each interval's right endpoint. Pre-event, fault, and post-event intervals
-are reported separately; only intervals ending in `[fault_start, fault_clear)`
-contribute to `max_rocof`. The interval ending at fault application is included
-in the event measure, while the interval ending at fault clearing is assigned
-to recovery. Startup behavior cannot dominate the fault metric. Recovery
-settling means P/Q are within 2% of their references (with a 1 W/var minimum
-tolerance) and VSG frequency is within 0.05 Hz (0.1% of nominal) continuously
-for at least 0.1 s, within the declared post-event measurement window. These
-are model-specific numerical acceptance tolerances, not grid-code thresholds.
-
-## Important limitations and claims
-
-The benchmark's nominal grid voltage is prescribed; there is no network or
-fault-impedance solution. The current reference is an ideal algebraic P/Q
-tracking law with uniform vector limiting, not an implemented inner current
-controller. The default case has no reactive-current boost law. The VSG angle
-is a virtual rotor state; the prescribed voltage vector does not rotate or
-couple back to an electrical network. The model omits output-filter dynamics,
-modulation, semiconductor limits/thermal behavior, DC-link dynamics,
-sequence/unbalance behavior, protection, control-mode transitions, and
-controller integrators/anti-windup. The separate virtual-impedance block
-changes a voltage reference algebraically but is not part of the benchmark's
-network solution.
-
-Accordingly, a passing benchmark demonstrates **software and equation
-consistency for the declared reduced-order simulation only**. It does not
-establish physical-model validation, real-hardware performance, transient
-stability, IEEE/IEC/national grid-code compliance, or any certification. No
-particular standard's requirements or test procedure are claimed here.
-
-## CI and quality checks
-
-GitHub Actions installs the declared development dependencies, runs the test
-suite, checks source/test lint, compiles the Python modules, and executes the
-FRT acceptance benchmark as a required command (a failed check fails the job).
-The project does not currently configure a type checker or a packaging/build
-backend.
+Machine-readable citation metadata is provided in [`CITATION.cff`](CITATION.cff) under the [MIT License](LICENSE).
