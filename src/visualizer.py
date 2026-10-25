@@ -15,6 +15,7 @@ from .cascaded_control import ElectromagneticTransientResult
 from .gfm_triad import GFMTriadBenchmarkResult
 from .lcl_plant import simulate_lcl_damping_step
 from .thevenin_network import ClosedLoopTransientResult
+from .weak_grid_benchmark import SCRStabilityPoint, WeakGridBenchmarkResult
 
 
 def plot_inverter_response(
@@ -502,6 +503,239 @@ def plot_gfm_triad_benchmark(
     ax.set_ylabel("Stationary EMF v_beta / V_0 (pu)", fontsize=9.5)
     ax.grid(True, ls="--", alpha=0.4)
     ax.legend(loc="upper left", fontsize=7.6, framealpha=0.95)
+
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
+    fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})
+    plt.close(fig)
+    return out
+
+
+def _valid_scr_xy(
+    pts: Sequence[SCRStabilityPoint],
+    attr: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    valid = [p for p in pts if p.equilibrium_exists]
+    return (
+        np.array([p.scr for p in valid], dtype=float),
+        np.array([getattr(p, attr) for p in valid], dtype=float),
+    )
+
+
+def plot_weak_grid_scr_benchmark(
+    bench: WeakGridBenchmarkResult,
+    save_path: str | Path = "results/gfl_vs_gfm_weak_grid_collapse.png",
+) -> Path:
+    """Render 4-panel GFL SRF-PLL vs. GFM weak-grid SCR stability & collapse benchmark."""
+    out = Path(save_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(2, 2, figsize=(13.6, 8.8))
+    p_kw = bench.p_dispatch_w / 1000.0
+    fig.suptitle(
+        f"Weak-Grid SCR Stability & Line-Opening Collapse: GFL (SRF-PLL) vs. GFM ({p_kw:.1f} kW = 0.75 pu Dispatch)",
+        fontsize=12.4,
+        fontweight="bold",
+        y=0.985,
+    )
+
+    # (a) Small-Signal Dominant Real Eigenvalue vs. Grid SCR
+    ax = axes[0, 0]
+    ax.axhline(0.0, color="#dc2626", ls="--", lw=1.35, label="Hopf Boundary Re(lambda) = 0")
+    ax.axhspan(0.0, 62.0, color="#fee2e2", alpha=0.50)
+    ax.axvline(
+        bench.scr_static_limit_gfl,
+        color="#7f1d1d",
+        ls=":",
+        lw=1.45,
+        label=f"GFL Nose-Curve Limit (SCR ~ {bench.scr_static_limit_gfl:.2f})",
+    )
+
+    for pts, color, marker, label in (
+        (
+            bench.gfl_fast_sweep,
+            "#dc2626",
+            "v",
+            f"GFL PLL 55 Hz (SCR_crit = {bench.scr_crit_gfl_fast:.2f})",
+        ),
+        (
+            bench.gfl_med_sweep,
+            "#ea580c",
+            "D",
+            f"GFL PLL 35 Hz (SCR_crit = {bench.scr_crit_gfl_med:.2f})",
+        ),
+        (
+            bench.gfl_slow_sweep,
+            "#ca8a04",
+            "s",
+            f"GFL PLL 10 Hz (SCR_crit = {bench.scr_crit_gfl_slow:.2f})",
+        ),
+        (bench.vsg_sweep, "#1d4ed8", "o", "GFM VSG 14-State (Hurwitz to 1.15)"),
+        (bench.dvoc_sweep, "#059669", "^", "GFM dVOC 12-State (Hurwitz to 1.15)"),
+    ):
+        sx, sy = _valid_scr_xy(pts, "max_real_eig_s_inv")
+        ax.plot(sx, sy, color=color, marker=marker, ms=4.6, lw=1.75, label=label)
+
+    ax.set_title("(a) Small-Signal Stability Margin vs. Grid Short-Circuit Ratio", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Grid Short-Circuit Ratio SCR (lower = weaker grid)", fontsize=9.5)
+    ax.set_ylabel("Max Real Eigenvalue Re(lambda) (s^-1)", fontsize=9.5)
+    ax.set_xlim(1.05, 6.15)
+    ax.set_ylim(-26.0, 58.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=7.65, framealpha=0.95)
+
+    # (b) Static Weak-Grid PCC Voltage Nose-Curve Knee vs. GFM Autonomous Support
+    ax = axes[0, 1]
+    ax.axvline(
+        bench.scr_static_limit_gfl,
+        color="#7f1d1d",
+        ls=":",
+        lw=1.45,
+        label=f"GFL Saddle-Node Collapse (SCR ~ {bench.scr_static_limit_gfl:.2f})",
+    )
+    ax.axvspan(1.05, bench.scr_static_limit_gfl, color="#fef2f2", alpha=0.72)
+
+    sx_gfl, vy_gfl = _valid_scr_xy(bench.gfl_slow_sweep, "v_pcc_eq_pu")
+    sx_vsg, vy_vsg = _valid_scr_xy(bench.vsg_sweep, "v_pcc_eq_pu")
+    sx_dvoc, vy_dvoc = _valid_scr_xy(bench.dvoc_sweep, "v_pcc_eq_pu")
+
+    ax.plot(
+        sx_gfl,
+        vy_gfl,
+        color="#ea580c",
+        marker="D",
+        ms=4.8,
+        lw=1.9,
+        label="GFL Equilibrium Branch (Q_ref = 0)",
+    )
+    ax.scatter(
+        [sx_gfl[-1]],
+        [vy_gfl[-1]],
+        color="#dc2626",
+        marker="X",
+        s=78,
+        zorder=5,
+        label=f"Last GFL Equilibrium ({sx_gfl[-1]:.2f}, {vy_gfl[-1]:.2f} pu)",
+    )
+    ax.plot(
+        sx_vsg,
+        vy_vsg,
+        color="#1d4ed8",
+        marker="o",
+        ms=4.6,
+        lw=1.85,
+        label=f"GFM VSG (V_pcc = {vy_vsg[-1]:.3f} pu @ SCR 1.15)",
+    )
+    ax.plot(
+        sx_dvoc,
+        vy_dvoc,
+        color="#059669",
+        marker="^",
+        ms=4.8,
+        lw=1.85,
+        ls="--",
+        label=f"GFM dVOC (V_pcc = {vy_dvoc[-1]:.3f} pu @ SCR 1.15)",
+    )
+    ax.set_title("(b) Steady-State PCC Voltage Nose-Curve Collapse vs. GFM Support", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Grid Short-Circuit Ratio SCR", fontsize=9.5)
+    ax.set_ylabel("Equilibrium PCC Voltage |v_pcc| (pu)", fontsize=9.5)
+    ax.set_xlim(1.05, 6.15)
+    ax.set_ylim(0.76, 1.03)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="lower right", fontsize=7.8, framealpha=0.95)
+
+    # (c) Line-Opening Contingency (SCR 4.0 -> 1.22): PCC Voltage Collapse vs. Ride-Through
+    ax = axes[1, 0]
+    tr_m, tr_s = bench.trip_gfl_med, bench.trip_gfl_slow
+    tr_v, tr_d = bench.trip_gfm_vsg, bench.trip_gfm_dvoc
+    ax.axvline(
+        tr_m.trip_time_s,
+        color="#334155",
+        ls=":",
+        lw=1.35,
+        label=f"Line Trip SCR {tr_m.scr_pre:.1f} -> {tr_m.scr_post:.2f}",
+    )
+    ax.plot(
+        tr_m.time_s,
+        tr_m.v_pcc_pu,
+        color="#ea580c",
+        lw=1.55,
+        alpha=0.92,
+        label=f"GFL PLL 35 Hz (Collapse V_min = {tr_m.min_v_pcc_pu:.2f} pu)",
+    )
+    ax.plot(
+        tr_s.time_s,
+        tr_s.v_pcc_pu,
+        color="#ca8a04",
+        lw=1.45,
+        ls="--",
+        alpha=0.90,
+        label=f"GFL PLL 10 Hz (Collapse V_min = {tr_s.min_v_pcc_pu:.2f} pu)",
+    )
+    ax.plot(
+        tr_v.time_s,
+        tr_v.v_pcc_pu,
+        color="#1d4ed8",
+        lw=2.05,
+        label=f"GFM VSG Ride-Through (V_min = {tr_v.min_v_pcc_pu:.3f} pu)",
+    )
+    ax.plot(
+        tr_d.time_s,
+        tr_d.v_pcc_pu,
+        color="#059669",
+        lw=1.95,
+        label=f"GFM dVOC Ride-Through (V_min = {tr_d.min_v_pcc_pu:.3f} pu)",
+    )
+    ax.set_title(
+        "(c) Line-Opening Contingency (SCR 4.0 -> 1.22): PCC Voltage |v_pcc|",
+        fontsize=10.3,
+        fontweight="bold",
+    )
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("PCC Voltage Magnitude |v_pcc| (pu)", fontsize=9.5)
+    ax.set_ylim(-0.05, 1.76)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=7.65, framealpha=0.95)
+
+    # (d) Synchronization Phase Angle Trajectory & Unbounded PLL Pole-Slipping (LOS)
+    ax = axes[1, 1]
+    ax.axvline(tr_m.trip_time_s, color="#334155", ls=":", lw=1.35)
+    ax.axhline(90.0, color="#64748b", ls="--", lw=1.15, label="90 deg Static Power-Transfer Ceiling")
+    ax.axhline(180.0, color="#dc2626", ls="-.", lw=1.2, label="180 deg Pole-Slip / LOS Threshold")
+    ax.plot(
+        tr_m.time_s,
+        tr_m.delta_deg,
+        color="#ea580c",
+        lw=1.75,
+        label="GFL PLL 35 Hz (Unbounded Pole-Slipping LOS)",
+    )
+    ax.plot(
+        tr_s.time_s,
+        tr_s.delta_deg,
+        color="#ca8a04",
+        lw=1.65,
+        ls="--",
+        label="GFL PLL 10 Hz (Unbounded Pole-Slipping LOS)",
+    )
+    ax.plot(
+        tr_v.time_s,
+        tr_v.delta_deg,
+        color="#1d4ed8",
+        lw=2.1,
+        label=f"GFM VSG Locked (delta_max = {tr_v.max_abs_delta_deg:.1f} deg)",
+    )
+    ax.plot(
+        tr_d.time_s,
+        tr_d.delta_deg,
+        color="#059669",
+        lw=2.0,
+        label=f"GFM dVOC Locked (delta_max = {tr_d.max_abs_delta_deg:.1f} deg)",
+    )
+    ax.set_title("(d) Phase Angle delta(t): PLL Loss of Synchronism vs. GFM Lock", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("Grid-Relative Phase Angle delta (deg)", fontsize=9.5)
+    ax.set_ylim(-35.0, 1680.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper left", fontsize=7.65, framealpha=0.95)
 
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
     fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})

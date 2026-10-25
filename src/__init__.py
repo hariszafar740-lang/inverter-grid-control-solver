@@ -1,4 +1,4 @@
-"""Grid-Forming Inverter Control Triad, Electromagnetic LCL Plant & Thévenin Network Solver."""
+"""Grid-Forming & Grid-Following Inverter Control, Electromagnetic LCL Plant & Thévenin Solver."""
 
 from typing import TYPE_CHECKING
 
@@ -22,6 +22,11 @@ from .dvoc_control import (
     BlackStartExcitationResult,
     DispatchableVirtualOscillator,
     DVOCConfig,
+)
+from .gfl_pll import (
+    ElectromagneticGFLModel,
+    SRFPLLConfig,
+    SynchronousReferenceFramePLL,
 )
 from .gfm_triad import (
     GFMMode,
@@ -47,6 +52,17 @@ from .visualizer import (
     plot_gfm_triad_benchmark,
     plot_inverter_response,
     plot_lcl_cascaded_electromagnetic_benchmark,
+    plot_weak_grid_scr_benchmark,
+)
+from .weak_grid_benchmark import (
+    SCRStabilityPoint,
+    WeakGridArchitecture,
+    WeakGridBenchmarkResult,
+    WeakGridLineTripResult,
+    estimate_critical_scr,
+    run_weak_grid_scr_benchmark,
+    simulate_weak_grid_line_trip,
+    sweep_scr_stability,
 )
 
 if TYPE_CHECKING:
@@ -57,7 +73,7 @@ if TYPE_CHECKING:
         validate_frt_benchmark_results,
     )
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 _BENCHMARK_EXPORTS = frozenset(
     {
@@ -76,6 +92,7 @@ __all__ = [
     "CoupledVSGTheveninModel",
     "DVOCConfig",
     "DispatchableVirtualOscillator",
+    "ElectromagneticGFLModel",
     "ElectromagneticGFMModel",
     "ElectromagneticTransientResult",
     "GFMMode",
@@ -87,9 +104,15 @@ __all__ = [
     "MultiLoopDVOCGFMModel",
     "MultiLoopDroopGFMModel",
     "PowerMeasurementLPF",
+    "SCRStabilityPoint",
+    "SRFPLLConfig",
+    "SynchronousReferenceFramePLL",
     "TheveninGridSpec",
     "VirtualImpedanceController",
     "VirtualInertiaEngine",
+    "WeakGridArchitecture",
+    "WeakGridBenchmarkResult",
+    "WeakGridLineTripResult",
     "__version__",
     "abc_to_alphabeta",
     "alphabeta_to_abc",
@@ -99,17 +122,22 @@ __all__ = [
     "compute_pq_dq",
     "current_reference_from_power",
     "dq_to_alphabeta",
+    "estimate_critical_scr",
     "plot_closed_loop_thevenin_benchmark",
     "plot_gfm_triad_benchmark",
     "plot_inverter_response",
     "plot_lcl_cascaded_electromagnetic_benchmark",
+    "plot_weak_grid_scr_benchmark",
     "rotate_dq_frame",
     "run_fault_ride_through_benchmark",
     "run_gfm_triad_benchmark",
+    "run_weak_grid_scr_benchmark",
     "simulate_coupled_vsg_transient",
     "simulate_electromagnetic_gfm_transient",
     "simulate_gfm_mode_transient",
     "simulate_lcl_damping_step",
+    "simulate_weak_grid_line_trip",
+    "sweep_scr_stability",
     "validate_frt_benchmark_results",
 ]
 
