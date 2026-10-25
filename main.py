@@ -1,4 +1,4 @@
-"""Reproducible closed-loop Thévenin, 14-state LCL, GFM Triad, Weak-Grid SCR & FRT entry point."""
+"""Reproducible Thévenin, 14-state LCL, GFM Triad, Weak-Grid SCR & EM FRT/TVI entry point."""
 
 from __future__ import annotations
 
@@ -6,10 +6,12 @@ from pathlib import Path
 
 from src.benchmark import run_fault_ride_through_benchmark, validate_frt_benchmark_results
 from src.cascaded_control import simulate_electromagnetic_gfm_transient
+from src.em_frt_benchmark import run_electromagnetic_frt_benchmark
 from src.gfm_triad import run_gfm_triad_benchmark
 from src.thevenin_network import TheveninGridSpec, simulate_coupled_vsg_transient
 from src.visualizer import (
     plot_closed_loop_thevenin_benchmark,
+    plot_electromagnetic_frt_benchmark,
     plot_gfm_triad_benchmark,
     plot_lcl_cascaded_electromagnetic_benchmark,
     plot_weak_grid_scr_benchmark,
@@ -59,11 +61,21 @@ def generate_weak_grid_scr_figure(
     return wg_res, out
 
 
+def generate_electromagnetic_frt_figure(
+    save_path: str | Path = "results/em_frt_tvi_phase_jump_response.png",
+):
+    """Run the 14-state EM FRT, TVI, PAW & -45 deg phase-jump benchmark and write the figure."""
+    em_frt_res = run_electromagnetic_frt_benchmark()
+    out = plot_electromagnetic_frt_benchmark(em_frt_res, save_path=save_path)
+    return em_frt_res, out
+
+
 def main(
     save_path: str | Path = "results/inverter_transient_response.png",
     lcl_save_path: str | Path | None = None,
     triad_save_path: str | Path | None = None,
     weak_grid_save_path: str | Path | None = None,
+    em_frt_save_path: str | Path | None = None,
 ) -> int:
     out_main = Path(save_path)
     out_lcl = (
@@ -81,18 +93,24 @@ def main(
         if weak_grid_save_path is not None
         else out_main.parent / "gfl_vs_gfm_weak_grid_collapse.png"
     )
+    out_em_frt = (
+        Path(em_frt_save_path)
+        if em_frt_save_path is not None
+        else out_main.parent / "em_frt_tvi_phase_jump_response.png"
+    )
 
     qs_res, fig_qs = generate_reference_transient_figure(save_path=out_main)
     em_res, fig_em = generate_lcl_electromagnetic_figure(qs_res=qs_res, save_path=out_lcl)
     triad_res, fig_triad = generate_gfm_triad_figure(spec=qs_res.spec, save_path=out_triad)
     wg_res, fig_wg = generate_weak_grid_scr_figure(save_path=out_wg)
+    em_frt_res, fig_em_frt = generate_electromagnetic_frt_figure(save_path=out_em_frt)
     frt = run_fault_ride_through_benchmark()
     validate_frt_benchmark_results(frt, require_current_limit=True)
 
     f_res = em_res.lcl.coupled_resonance_hz(em_res.grid.l_g_h)
-    print("=" * 88)
-    print("GRID-FORMING & WEAK-GRID GFL/GFM ELECTROMAGNETIC LCL, TRIAD & FRT BENCHMARK")
-    print("=" * 88)
+    print("=" * 90)
+    print("GRID-FORMING & WEAK-GRID GFL/GFM ELECTROMAGNETIC LCL, TRIAD & EM-FRT BENCHMARK")
+    print("=" * 90)
     print(
         f"Grid Rating & Strength: S_rated = {qs_res.spec.s_rated_va / 1e3:.1f} kVA | "
         f"SCR = {qs_res.spec.scr:.1f} | X/R = {qs_res.spec.xr_ratio:.1f} | H = {qs_res.spec.h_inertia_s:.2f} s"
@@ -119,12 +137,24 @@ def main(
         f"{wg_res.scr_crit_gfl_med:.2f} / {wg_res.scr_crit_gfl_slow:.2f} | "
         f"GFL LOS = {wg_res.trip_gfl_med.lost_synchronism} vs GFM LOS = {wg_res.trip_gfm_vsg.lost_synchronism}"
     )
+    sp, sh, jp, jh = (
+        em_frt_res.sag_tvi_paw,
+        em_frt_res.sag_hard_clamp,
+        em_frt_res.jump_tvi_paw,
+        em_frt_res.jump_hard_clamp,
+    )
+    print(
+        f"14-State EM FRT & Jump: "
+        f"0.15pu Sag TVI+PAW I_pk = {sp.peak_bridge_current_a:.2f} A (delta {sp.max_abs_delta_deg:.1f} deg vs "
+        f"Clamp {sh.max_abs_delta_deg:.0f} deg) | "
+        f"-45deg Jump I_pk = {jp.peak_bridge_current_a:.2f} A (Clamp LOS {jh.max_abs_delta_deg:.0f} deg)"
+    )
     print(
         f"Reduced-Order 0.5pu Sag: I_max = {frt['fault_max_current_a']:.2f} A | "
         f"Fault RoCoF = {frt['max_rocof']:.4f} Hz/s | Settling = {frt['recovery_settling_time_s']:.3f} s"
     )
-    print(f"Saved Figures:          {fig_qs} | {fig_em} | {fig_triad} | {fig_wg}")
-    print("=" * 88)
+    print(f"Saved Figures:          {fig_qs} | {fig_em} | {fig_triad} | {fig_wg} | {fig_em_frt}")
+    print("=" * 90)
     return 0
 
 

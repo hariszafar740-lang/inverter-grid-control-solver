@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .cascaded_control import ElectromagneticTransientResult
+from .em_frt_benchmark import ElectromagneticFRTBenchmarkResult
 from .gfm_triad import GFMTriadBenchmarkResult
 from .lcl_plant import simulate_lcl_damping_step
 from .thevenin_network import ClosedLoopTransientResult
@@ -736,6 +737,199 @@ def plot_weak_grid_scr_benchmark(
     ax.set_ylim(-35.0, 1680.0)
     ax.grid(True, ls="--", alpha=0.4)
     ax.legend(loc="upper left", fontsize=7.65, framealpha=0.95)
+
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
+    fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})
+    plt.close(fig)
+    return out
+
+
+def plot_electromagnetic_frt_benchmark(
+    frt: ElectromagneticFRTBenchmarkResult,
+    save_path: str | Path = "results/em_frt_tvi_phase_jump_response.png",
+) -> Path:
+    """Render 4-panel 14-state electromagnetic FRT, TVI, PAW & phase-jump benchmark figure."""
+    out = Path(save_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(2, 2, figsize=(13.8, 8.9))
+    fig.suptitle(
+        "14-State Electromagnetic GFM Fault Ride-Through & -45 deg Phase Jump: TVI + Power Anti-Windup",
+        fontsize=12.3,
+        fontweight="bold",
+        y=0.985,
+    )
+
+    su = frt.sag_unprotected
+    sh = frt.sag_hard_clamp
+    st = frt.sag_tvi_only
+    sp = frt.sag_tvi_paw
+    t0_f, t1_f = sp.event_start_s, sp.event_end_s
+    i_max = frt.grid.i_max_peak_a
+    i_th = frt.tvi_cfg.i_thresh_peak_a
+
+    # (a) Deep 0.15 pu Fault: Bridge Peak Current |i_1,dq|(t)
+    ax = axes[0, 0]
+    ax.axvspan(t0_f, t1_f, color="#fee2e2", alpha=0.45, label="0.15 pu Symmetrical Fault")
+    ax.axhline(i_max, color="#dc2626", ls="--", lw=1.4, label=f"Hardware Ceiling I_max = {i_max:.0f} A")
+    ax.axhline(i_th, color="#475569", ls=":", lw=1.2, label=f"TVI Threshold I_th = {i_th:.0f} A")
+    ax.plot(
+        su.time_s,
+        su.i1_peak_a,
+        color="#991b1b",
+        lw=1.35,
+        ls="-.",
+        alpha=0.85,
+        label=f"Unprotected (I_pk = {su.peak_bridge_current_a:.1f} A [3.91 pu])",
+    )
+    ax.plot(
+        sh.time_s,
+        sh.i1_peak_a,
+        color="#ea580c",
+        lw=1.65,
+        label=f"Hard Clamp Only (I_pk = {sh.peak_bridge_current_a:.1f} A, sat {sh.saturation_duty_pct:.0f}%)",
+    )
+    ax.plot(
+        st.time_s,
+        st.i1_peak_a,
+        color="#ca8a04",
+        lw=1.65,
+        ls="--",
+        label=f"TVI Only (I_pk = {st.peak_bridge_current_a:.2f} A)",
+    )
+    ax.plot(
+        sp.time_s,
+        sp.i1_peak_a,
+        color="#059669",
+        lw=2.1,
+        label=f"TVI + Power AW (I_pk = {sp.peak_bridge_current_a:.2f} A <= {i_max:.0f} A)",
+    )
+    ax.set_title("(a) Deep 0.15 pu Fault: Inverter Bridge Peak Current |i_1,dq|", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("Bridge Peak Current |i_1,dq| (A)", fontsize=9.5)
+    ax.set_ylim(0.0, 176.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=7.45, framealpha=0.95)
+
+    # (b) Deep 0.15 pu Fault: Virtual Rotor Angle Windup vs. PAW Stabilization
+    ax = axes[0, 1]
+    ax.axvspan(t0_f, t1_f, color="#fee2e2", alpha=0.45)
+    ax.axhline(90.0, color="#64748b", ls="--", lw=1.15, label="90 deg Static Ceiling")
+    ax.axhline(180.0, color="#dc2626", ls="-.", lw=1.2, label="180 deg Pole-Slip / LOS")
+    ax.plot(
+        su.time_s,
+        su.delta_rel_deg,
+        color="#991b1b",
+        lw=1.4,
+        ls="-.",
+        alpha=0.85,
+        label=f"Unprotected (delta_max = {su.max_abs_delta_deg:.1f} deg, 160 A!)",
+    )
+    ax.plot(
+        sh.time_s,
+        sh.delta_rel_deg,
+        color="#ea580c",
+        lw=1.8,
+        label=f"Hard Clamp Only (Windup {sh.max_abs_delta_deg:.0f} deg, LOS)",
+    )
+    ax.plot(
+        st.time_s,
+        st.delta_rel_deg,
+        color="#ca8a04",
+        lw=1.75,
+        ls="--",
+        label=f"TVI Only (1 Cycle Slip {st.max_abs_delta_deg:.0f} deg)",
+    )
+    ax.plot(
+        sp.time_s,
+        sp.delta_rel_deg,
+        color="#059669",
+        lw=2.15,
+        label=f"TVI + Power AW (Locked, max {sp.max_abs_delta_deg:.1f} deg)",
+    )
+    ax.set_title("(b) Deep 0.15 pu Fault: Virtual Rotor Angle delta_rel(t)", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("Grid-Relative Rotor Angle delta (deg)", fontsize=9.5)
+    ax.set_ylim(-15.0, 540.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper left", fontsize=7.55, framealpha=0.95)
+
+    # (c) Deep 0.15 pu Fault: Active Power Recovery & Reactive Fault Support
+    ax = axes[1, 0]
+    ax.axvspan(t0_f, t1_f, color="#fee2e2", alpha=0.45)
+    ax.axhline(0.0, color="#334155", lw=0.9, alpha=0.7)
+    ax.plot(
+        sh.time_s,
+        sh.p_pcc_kw,
+        color="#ea580c",
+        lw=1.6,
+        alpha=0.92,
+        label=f"Hard Clamp P_pcc (Post-Fault {sh.post_event_power_kw:.1f} kW Reversal)",
+    )
+    ax.plot(
+        st.time_s,
+        st.p_pcc_kw,
+        color="#ca8a04",
+        lw=1.55,
+        ls="--",
+        label=f"TVI Only P_pcc (Slip Swing, P_fin = {st.post_event_power_kw:.1f} kW)",
+    )
+    ax.plot(
+        sp.time_s,
+        sp.p_pcc_kw,
+        color="#059669",
+        lw=2.1,
+        label=f"TVI + PAW P_pcc (Smooth Recovery {sp.post_event_power_kw:.2f} kW)",
+    )
+    ax.plot(
+        sp.time_s,
+        sp.q_pcc_kvar,
+        color="#1d4ed8",
+        lw=1.85,
+        ls="-.",
+        label=f"TVI + PAW Q_pcc (+{sp.fault_mean_q_kvar:.2f} kvar Inductive Support)",
+    )
+    ax.set_title("(c) PCC Active Power Recovery & Reactive Fault Support", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("PCC Power P_pcc (kW) / Q_pcc (kvar)", fontsize=9.5)
+    ax.set_ylim(-24.0, 36.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=7.45, framealpha=0.95)
+
+    # (d) Severe -45 deg Grid Phase Jump: Circular-Clamp Latch-Up vs. TVI Ride-Through
+    ax = axes[1, 1]
+    ju, jh, jp = frt.jump_unprotected, frt.jump_hard_clamp, frt.jump_tvi_paw
+    ax.axvline(jp.event_start_s, color="#334155", ls=":", lw=1.35, label="-45 deg Grid Phase Jump (t = 0.20 s)")
+    ax.axhline(180.0, color="#dc2626", ls="-.", lw=1.2, label="180 deg Latch-Up / LOS Threshold")
+    ax.plot(
+        ju.time_s,
+        ju.delta_rel_deg,
+        color="#991b1b",
+        lw=1.45,
+        ls="-.",
+        alpha=0.85,
+        label=f"Unprotected (Destructive I_pk = {ju.peak_bridge_current_a:.1f} A!)",
+    )
+    ax.plot(
+        jh.time_s,
+        jh.delta_rel_deg,
+        color="#ea580c",
+        lw=1.85,
+        label=f"Hard Clamp Latch-Up (delta = {jh.max_abs_delta_deg:.0f} deg, sat {jh.saturation_duty_pct:.0f}%)",
+    )
+    ax.plot(
+        jp.time_s,
+        jp.delta_rel_deg,
+        color="#059669",
+        lw=2.15,
+        label=f"TVI + PAW Ride-Through (I_pk = {jp.peak_bridge_current_a:.1f} A <= {i_max:.0f} A)",
+    )
+    ax.set_title("(d) -45 deg Grid Phase Jump: Circular-Clamp Latch-Up vs. TVI", fontsize=10.3, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("Grid-Relative Rotor Angle delta (deg)", fontsize=9.5)
+    ax.set_ylim(-15.0, 415.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper left", fontsize=7.45, framealpha=0.95)
 
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
     fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})
