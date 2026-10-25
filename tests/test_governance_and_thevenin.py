@@ -42,6 +42,7 @@ class TestGovernanceAndMetadata:
             "results/inverter_transient_response.png",
             "results/lcl_cascaded_electromagnetic_response.png",
             "results/gfm_triad_comparative_response.png",
+            "results/gfl_vs_gfm_weak_grid_collapse.png",
         )
         for rel in required:
             p = REPO_ROOT / rel
@@ -49,7 +50,7 @@ class TestGovernanceAndMetadata:
             assert p.stat().st_size > 20, f"Unexpectedly empty file: {rel}"
 
     def test_package_version_and_public_exports(self):
-        assert src.__version__ == "0.4.0"
+        assert src.__version__ == "0.5.0"
         for sym in (
             "CoupledVSGTheveninModel",
             "TheveninGridSpec",
@@ -59,6 +60,9 @@ class TestGovernanceAndMetadata:
             "MultiLoopDroopGFMModel",
             "MultiLoopDVOCGFMModel",
             "run_gfm_triad_benchmark",
+            "SRFPLLConfig",
+            "ElectromagneticGFLModel",
+            "run_weak_grid_scr_benchmark",
         ):
             assert hasattr(src, sym)
 
@@ -67,6 +71,7 @@ class TestGovernanceAndMetadata:
         assert "results/inverter_transient_response.png" in readme
         assert "results/lcl_cascaded_electromagnetic_response.png" in readme
         assert "results/gfm_triad_comparative_response.png" in readme
+        assert "results/gfl_vs_gfm_weak_grid_collapse.png" in readme
         assert "not evidence of real-hardware performance" in readme
 
 
@@ -154,14 +159,21 @@ class TestCoupledVSGTheveninPhysics:
         fig_file = tmp_path / "transient.png"
         lcl_file = tmp_path / "lcl.png"
         triad_file = tmp_path / "triad.png"
-        rc = main_entry.main(save_path=fig_file, lcl_save_path=lcl_file, triad_save_path=triad_file)
+        wg_file = tmp_path / "wg.png"
+        rc = main_entry.main(
+            save_path=fig_file,
+            lcl_save_path=lcl_file,
+            triad_save_path=triad_file,
+            weak_grid_save_path=wg_file,
+        )
         captured = capsys.readouterr().out
         assert rc == 0
         assert fig_file.is_file() and fig_file.stat().st_size > 40_000
         assert lcl_file.is_file() and lcl_file.stat().st_size > 40_000
         assert triad_file.is_file() and triad_file.stat().st_size > 40_000
+        assert wg_file.is_file() and wg_file.stat().st_size > 40_000
         assert "DAY 19" not in captured
-        assert "GRID-FORMING INVERTER CLOSED-LOOP" in captured
+        assert "GRID-FORMING & WEAK-GRID GFL/GFM" in captured
 
     def test_benchmark_cli_invocations_emit_no_warnings(self):
         for args in ([sys.executable, "-m", "src.benchmark"], [sys.executable, "src/benchmark.py"]):
