@@ -40,6 +40,7 @@ class TestGovernanceAndMetadata:
             ".github/ISSUE_TEMPLATE/bug_report.yml",
             ".github/ISSUE_TEMPLATE/feature_request.yml",
             "results/inverter_transient_response.png",
+            "results/lcl_cascaded_electromagnetic_response.png",
         )
         for rel in required:
             p = REPO_ROOT / rel
@@ -47,7 +48,7 @@ class TestGovernanceAndMetadata:
             assert p.stat().st_size > 20, f"Unexpectedly empty file: {rel}"
 
     def test_package_version_and_public_exports(self):
-        assert src.__version__ == "0.2.0"
+        assert src.__version__ == "0.3.0"
         for sym in ("CoupledVSGTheveninModel", "TheveninGridSpec", "simulate_coupled_vsg_transient"):
             assert hasattr(src, sym)
 
@@ -142,10 +143,12 @@ class TestCoupledVSGTheveninPhysics:
 
     def test_main_entrypoint_and_reproducible_figure(self, tmp_path, capsys):
         fig_file = tmp_path / "transient.png"
-        rc = main_entry.main(save_path=fig_file)
+        lcl_file = tmp_path / "lcl.png"
+        rc = main_entry.main(save_path=fig_file, lcl_save_path=lcl_file)
         captured = capsys.readouterr().out
         assert rc == 0
         assert fig_file.is_file() and fig_file.stat().st_size > 40_000
+        assert lcl_file.is_file() and lcl_file.stat().st_size > 40_000
         assert "DAY 19" not in captured
         assert "GRID-FORMING INVERTER CLOSED-LOOP" in captured
 

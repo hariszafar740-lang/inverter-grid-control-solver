@@ -11,6 +11,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+from .cascaded_control import ElectromagneticTransientResult
+from .lcl_plant import simulate_lcl_damping_step
 from .thevenin_network import ClosedLoopTransientResult
 
 
@@ -181,6 +183,148 @@ def plot_closed_loop_thevenin_benchmark(
     ax.set_ylim(-25.5, 26.5)
     ax.grid(True, ls="--", alpha=0.4)
     ax.legend(loc="lower right", fontsize=8.4, framealpha=0.94)
+
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
+    fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})
+    plt.close(fig)
+    return out
+
+
+def plot_lcl_cascaded_electromagnetic_benchmark(
+    em_res: ElectromagneticTransientResult,
+    qs_res: ClosedLoopTransientResult,
+    save_path: str | Path = "results/lcl_cascaded_electromagnetic_response.png",
+) -> Path:
+    """Render the 4-panel 14-state electromagnetic LCL + cascaded dq PI benchmark figure."""
+    out = Path(save_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(2, 2, figsize=(13.8, 9.0), dpi=220)
+    f_res_coupled = em_res.lcl.coupled_resonance_hz(em_res.grid.l_g_h)
+    fig.suptitle(
+        f"14-State Electromagnetic dq LCL Plant + Cascaded Dual-Loop PI GFM Control "
+        f"(f_res = {f_res_coupled:.0f} Hz, F_i = {em_res.pi_cfg.feedforward_current_gain:.2f})",
+        fontsize=12.3,
+        fontweight="bold",
+        y=0.98,
+    )
+
+    # (a) Macro-timescale comparison: 14-state Electromagnetic LCL vs 4-state Quasi-Static
+    ax = axes[0, 0]
+    ax.plot(
+        qs_res.time_s,
+        qs_res.p_pcc_w / 1000.0,
+        color="#64748b",
+        ls="--",
+        lw=1.8,
+        label=f"4-State Quasi-Static P_pcc ({qs_res.final_power_kw:.2f} kW)",
+    )
+    ax.plot(
+        em_res.time_s,
+        em_res.p_pcc_w / 1000.0,
+        color="#059669",
+        lw=2.0,
+        alpha=0.92,
+        label=f"14-State Electromagnetic LCL P_pcc ({em_res.final_power_kw:.2f} kW)",
+    )
+    ax.plot(
+        em_res.time_s,
+        em_res.p_ref_w / 1000.0,
+        color="#0f172a",
+        ls=":",
+        lw=1.4,
+        label="Dispatch Setpoint P_ref(t)",
+    )
+    ax.set_title("(a) Macro-Timescale Fidelity: 14-State LCL vs. Quasi-Static", fontsize=10.4, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("PCC Active Power (kW)", fontsize=9.5)
+    ax.set_ylim(-3.5, 25.5)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="lower right", fontsize=8.3, framealpha=0.94)
+
+    # (b) Inner dq Current Loop Tracking across the t = 1.15 s Grid Frequency Drop
+    ax = axes[0, 1]
+    mask_zoom = (em_res.time_s >= 1.13) & (em_res.time_s <= 1.45)
+    tz = em_res.time_s[mask_zoom]
+    ax.plot(tz, em_res.i1_d_ref_a[mask_zoom], color="#1d4ed8", ls="--", lw=1.7, label="Reference i_1d* (A)")
+    ax.plot(tz, em_res.i1_d_a[mask_zoom], color="#3b82f6", lw=1.9, alpha=0.9, label="Bridge Current i_1d (A)")
+    ax.plot(tz, em_res.i1_q_ref_a[mask_zoom], color="#b45309", ls="--", lw=1.7, label="Reference i_1q* (A)")
+    ax.plot(tz, em_res.i1_q_a[mask_zoom], color="#f59e0b", lw=1.9, alpha=0.9, label="Bridge Current i_1q (A)")
+    ax.axvline(1.15, color="#94a3b8", ls=":", lw=1.1)
+    ax.set_title("(b) Inner dq Current PI Tracking (f_bw,i = 1.0 kHz)", fontsize=10.4, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("Synchronous dq Current (A)", fontsize=9.5)
+    ax.set_ylim(-14.0, 52.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="center right", fontsize=8.2, framealpha=0.94)
+
+    # (c) Outer dq Filter-Capacitor Voltage Regulation & Cross-Coupling Decoupling
+    ax = axes[1, 0]
+    ax.plot(
+        em_res.time_s,
+        em_res.vf_d_ref_v,
+        color="#7c3aed",
+        ls="--",
+        lw=1.6,
+        label="Reference v_fd* (V)",
+    )
+    ax.plot(
+        em_res.time_s,
+        em_res.vf_d_v,
+        color="#a855f7",
+        lw=1.9,
+        alpha=0.9,
+        label="Filter Bus v_fd (V)",
+    )
+    ax.plot(
+        em_res.time_s,
+        em_res.vf_q_ref_v,
+        color="#dc2626",
+        ls="--",
+        lw=1.6,
+        label="Reference v_fq* (V)",
+    )
+    ax.plot(
+        em_res.time_s,
+        em_res.vf_q_v,
+        color="#fb7185",
+        lw=1.8,
+        alpha=0.9,
+        label="Filter Bus v_fq (V)",
+    )
+    ax.set_title("(c) Outer dq Capacitor-Voltage PI & Z_v Conditioning", fontsize=10.4, fontweight="bold")
+    ax.set_xlabel("Time (s)", fontsize=9.5)
+    ax.set_ylabel("Filter Bus Voltage v_f,dq (V)", fontsize=9.5)
+    ax.set_ylim(-65.0, 385.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="center right", fontsize=8.2, framealpha=0.94)
+
+    # (d) Sub-cycle LCL Filter Resonance Damping (Rd = 1.80 Ohm vs Underdamped Rd = 0.02 Ohm)
+    ax = axes[1, 1]
+    t_ud, vcd_ud = simulate_lcl_damping_step(rd_ohm=0.02, grid=em_res.grid)
+    t_dp, vcd_dp = simulate_lcl_damping_step(rd_ohm=em_res.lcl.rd_ohm, grid=em_res.grid)
+    ax.plot(
+        t_ud * 1e3,
+        vcd_ud,
+        color="#ef4444",
+        lw=1.5,
+        alpha=0.88,
+        label="Underdamped R_d = 0.02 Ohm (1.05 kHz Ringing)",
+    )
+    ax.plot(
+        t_dp * 1e3,
+        vcd_dp,
+        color="#0f172a",
+        lw=2.1,
+        label=f"Passively Damped R_d = {em_res.lcl.rd_ohm:.2f} Ohm",
+    )
+    ax.axvline(1.0, color="#94a3b8", ls=":", lw=1.1)
+    ax.set_title("(d) Sub-Cycle LCL Capacitor Step & Passive Resonance Damping", fontsize=10.4, fontweight="bold")
+    ax.set_xlabel("Time (ms)", fontsize=9.5)
+    ax.set_ylabel("Capacitor Voltage v_cd (V)", fontsize=9.5)
+    ax.set_ylim(322.0, 352.0)
+    ax.grid(True, ls="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=8.3, framealpha=0.94)
 
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
     fig.savefig(out, dpi=220, metadata={"Software": "inverter-grid-control-solver"})
