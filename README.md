@@ -2,10 +2,13 @@
 
 [![CI](https://github.com/hariszafar740-lang/inverter-grid-control-solver/actions/workflows/ci.yml/badge.svg)](https://github.com/hariszafar740-lang/inverter-grid-control-solver/actions/workflows/ci.yml)
 ![Python Version](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)
+[![Interactive Workbench](https://img.shields.io/badge/Interactive_Workbench-GitHub_Pages-10b981?logo=github)](https://hariszafar740-lang.github.io/inverter-grid-control-solver/)
+![Release](https://img.shields.io/badge/release-v1.0.0-0284c7)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Physics-based Python simulation, modal participation, and synchronous-$dq$ impedance passivity verification framework (`gfm_solver` / `gfm-sim`) for **Grid-Forming (GFM) and Grid-Following (GFL) Inverter Control**:
+Physics-based Python simulation, modal participation, synchronous-$dq$ impedance passivity verification framework (`gfm_solver` / `gfm-sim`), and **[Zero-CDN Interactive HTML5/Canvas Workbench](https://hariszafar740-lang.github.io/inverter-grid-control-solver/)** for **Grid-Forming (GFM) and Grid-Following (GFL) Inverter Control**:
 
+- **Zero-CDN Interactive HTML5/Canvas GFM & Weak-Grid Workbench (`src/web_dashboard.py`, `gfm-sim web`):** Self-contained offline/GitHub Pages engineering workbench combining a real-time browser 4th-order Runge-Kutta (`dt = 250 us`) electromagnetic fault & weak-grid simulator (`VSG`, `Droop`, `dVOC`, `SRF-PLL`; `TVI + PAW`, `Hard Clamp`, `Unprotected`) with live Python state-space root-locus, passivity $\nu(f)$, Generalized Nyquist $Z = P + N$, and one-click CSV trace export.
 - **Small-Signal Eigenvalue Participation, Synchronous-$dq$ Admittance Passivity & Generalized Nyquist (`src/small_signal_impedance.py`, `src/cli.py`):** Decomposes right/left state-space eigenvectors into exact normalized participation matrices $P_{ki}$, derives the exact $2\times 2$ synchronous-$dq$ PCC input admittance $\mathbf{Y}_{\text{inv},dq}(s)$ satisfying the Schur-complement pole identity $\det(\mathbf{I}_2 + \mathbf{Z}_{g,dq}(\lambda_i)\mathbf{Y}_{\text{inv},dq}(\lambda_i)) = 0$, proves why Qoria partial feedforward ($F_i = 0.75$) maintains medium/high-frequency passivity ($\nu(f) > 0$ across $[25, 6000]\text{ Hz}$) whereas naive $F_i = 1.00$ induces a non-passive dip ($\nu = -1.04\text{ S}$ on $[25.1, 93.3]\text{ Hz}$), and verifies exact Generalized Nyquist RHP pole counts $Z = P + N \equiv Z_{\text{ss}}$ across `VSG`, `Droop`, `dVOC`, and `GFL`.
 - **14-State Electromagnetic Fault Ride-Through (`FRT`), `-45 deg` Phase Jump, Threshold Transient Virtual Impedance (`TVI`) & Power Anti-Windup (`src/transient_virtual_impedance.py`, `src/em_frt_benchmark.py`):** Contrasts unprotected overcurrent spikes (`160.2 A = 3.91 pu`), Qoria circular current-limiter latch-up & virtual-rotor windup (`440.7 deg` under a `0.15 pu` sag; `344.7 deg` under a `-45 deg` phase jump), and coordinated **`TVI + Synchronizing Power-Loop Anti-Windup` (`PAW`)** (`|i_{1,dq}| <= 47.95 A <= I_{max}`, `0.1%` voltage-loop saturation, `max delta = 27.5 deg`, zero cycle slips).
 - **Weak-Grid `SCR` Collapse Benchmark — `GFL (SRF-PLL)` vs. `GFM` (`src/gfl_pll.py`, `src/weak_grid_benchmark.py`):** Quantifies bandwidth-dependent PLL–impedance Hopf bifurcation ($\text{SCR}_{\text{crit}}(f_{bw,\text{pll}}) = 2.99 / 1.80 / 1.67$) and static nose-curve saddle-node Loss of Synchronism (`LOS`) during parallel-line opening (`SCR: 4.0 -> 1.22`).
@@ -31,12 +34,13 @@ Python `3.10–3.13` is supported and tested in CI as a PEP 621 / PEP 561 typed 
 python -m pip install -e ".[dev]"
 gfm-sim info --json
 gfm-sim impedance --scr 1.65 --p-kw 15.0
+gfm-sim web --output-dir site --json
 python main.py
 python -m src.benchmark
 python -m pytest -v
 ```
 
-All CLI subcommands (`gfm-sim info`, `gfm-sim triad`, `gfm-sim weak-grid`, `gfm-sim frt`, `gfm-sim impedance`, or `python -m gfm_solver <subcommand>`) support `--json` structured output and `--save-plot`.
+All CLI subcommands (`gfm-sim info`, `gfm-sim triad`, `gfm-sim weak-grid`, `gfm-sim frt`, `gfm-sim impedance`, `gfm-sim web`, or `python -m gfm_solver <subcommand>`) support `--json` structured output.
 
 ## Small-Signal `dq` Admittance Passivity & Generalized Nyquist Summary (`SCR = 1.65`, $P_{\text{ref}} = 15\text{ kW}$)
 
@@ -82,7 +86,7 @@ $$\Delta R_v(|\mathbf{i}|) = k_{\text{tvi}}\max(0,\, |\mathbf{i}| - I_{\text{th}
 
 ## Scope & Engineering Limitations
 
-This repository models balanced three-phase (positive-sequence) averaged inverter bridge modulation, $LCL$ filter electromagnetics, cascaded $dq$ / `SRF-PLL` / `TVI` control loops, small-signal $dq$ terminal admittances, and Thévenin AC grid equivalents. In Module 6 (`v0.7.0`), discrete PWM switching ripple, dead-time distortion, semiconductor junction thermal limits, DC-link capacitor energy balance, and unbalanced negative/zero-sequence faults are not modeled. Passing tests and benchmarks verify **mathematical and software consistency for the documented models only**—they are not evidence of real-hardware performance, grid-code compliance, or equipment certification.
+This repository models balanced three-phase (positive-sequence) averaged inverter bridge modulation, $LCL$ filter electromagnetics, cascaded $dq$ / `SRF-PLL` / `TVI` control loops, small-signal $dq$ terminal admittances, and Thévenin AC grid equivalents. In `v1.0.0`, discrete PWM switching ripple, dead-time distortion, semiconductor junction thermal limits, DC-link capacitor energy balance, and unbalanced negative/zero-sequence faults are not modeled. Passing tests and benchmarks verify **mathematical and software consistency for the documented models only**—they are not evidence of real-hardware performance, grid-code compliance, or equipment certification.
 
 ## Citation
 

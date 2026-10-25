@@ -43,6 +43,8 @@ jobs:
         run: |
           gfm-sim info --json
           python -m gfm_solver info --json
+          gfm-sim web --output-dir /tmp/gfm_site --json
+          rm -rf /tmp/gfm_site
           python -m build --no-isolation
           python - << 'PY'
           import glob

@@ -20,6 +20,7 @@ from .visualizer import (
     plot_weak_grid_scr_benchmark,
 )
 from .weak_grid_benchmark import run_weak_grid_scr_benchmark
+from .web_dashboard import build_static_web_workbench
 
 CLI_VERSION = __version__
 
@@ -60,7 +61,7 @@ def _cmd_info(args: argparse.Namespace) -> int:
             f"Nominal Rating: {spec.s_rated_va / 1e3:.1f} kVA | {spec.v_phase_rms_v:.0f} Vrms | "
             f"{spec.f_nom_hz:.1f} Hz | I_max = {spec.i_max_peak_a:.1f} A_pk"
         ),
-        "Available Subcommands: info | triad | weak-grid | frt | impedance",
+        "Available Subcommands: info | triad | weak-grid | frt | impedance | web",
     ]
     _emit(payload, as_json=bool(args.json), lines=lines)
     return 0
@@ -273,6 +274,17 @@ def _cmd_impedance(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_web(args: argparse.Namespace) -> int:
+    summary = build_static_web_workbench(output_dir=args.output_dir)
+    lines = [
+        f"Static GFM & Weak-Grid Workbench v{summary['version']} built at: {summary['output_dir']}",
+        f"  Files written:  {', '.join(summary['files_written'])}",
+        f"  Copied figures: {len(summary['copied_figures'])} PNGs",
+    ]
+    _emit(summary, as_json=bool(args.json), lines=lines)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gfm-sim",
@@ -316,6 +328,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp.add_argument("--save-plot", type=str, default=None)
     p_imp.add_argument("--json", action="store_true")
     p_imp.set_defaults(func=_cmd_impedance)
+
+
+    p_web = sub.add_parser("web", help="Build standalone zero-CDN HTML5/Canvas workbench for GitHub Pages.")
+    p_web.add_argument("--output-dir", type=str, default="site")
+    p_web.add_argument("--json", action="store_true")
+    p_web.set_defaults(func=_cmd_web)
 
     return parser
 
