@@ -5,12 +5,12 @@ electromagnetic Grid-Forming (GFM) inverters during deep symmetrical AC faults a
 grid phase jumps (Paquette & Divan, *IEEE Trans. Ind. Appl.*, 2015; Qoria et al., *IEEE
 TPEL*, 2020; Taul et al., *IEEE JESTPE*, 2020; Rokrok et al., *IEEE TPWRS*, 2022):
 
-  1. **Threshold Transient Virtual Impedance (TVI):**
+  1. Threshold Transient Virtual Impedance (TVI):
      Above current threshold ``I_th``, adds proportional resistive-inductive virtual
      impedance ``Delta Z_v(|i|) = Delta R_v + j * (omega / omega_0) * sigma_XR * Delta R_v``
      ahead of the synchronous-dq voltage PI loop so the inverter remains an unsaturated
      Thevenin voltage source while bounding bridge peak current ``|i_1,dq| <= I_max``.
-  2. **Synchronizing Active-Power Anti-Windup (PAW):**
+  2. Synchronizing Active-Power Anti-Windup (PAW):
      Derates outer swing-equation power reference ``P_ref,eff`` during deep PCC voltage
      depressions and overcurrent excursions above ``I_th`` to prevent virtual-rotor windup
      and post-fault pole-slipping Loss of Synchronism (LOS).

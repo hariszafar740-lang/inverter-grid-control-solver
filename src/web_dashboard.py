@@ -27,7 +27,7 @@ WORKBENCH_VERSION = "1.0.0"
 BENCHMARK_FIGURES: tuple[dict[str, str], ...] = (
     {
         "file": "small_signal_eigenvalue_impedance_passivity.png",
-        "title": "Figure 1 — Small-Signal Modal Participation, dq Admittance Passivity & Generalized Nyquist",
+        "title": "Figure 1, Small-Signal Modal Participation, dq Admittance Passivity & Generalized Nyquist",
         "caption": (
             "14-state VSG participation matrix P_ki, Qoria F_i = 0.75 passivity restoration "
             "(min nu >= 25 Hz = +0.0019 S vs. F_i = 1.00 dip -1.04 S), and exact Z = P + N."
@@ -35,7 +35,7 @@ BENCHMARK_FIGURES: tuple[dict[str, str], ...] = (
     },
     {
         "file": "em_frt_tvi_phase_jump_response.png",
-        "title": "Figure 2 — 14-State Electromagnetic FRT (0.15 pu Sag) & -45° Phase-Jump Ride-Through",
+        "title": "Figure 2, 14-State Electromagnetic FRT (0.15 pu Sag) & -45° Phase-Jump Ride-Through",
         "caption": (
             "Unprotected 160.2 A spike & Hard-Clamp 440.7° windup LOS vs. coordinated TVI + PAW "
             "(I_pk = 47.95 A <= 48 A, max delta = 27.5°, zero cycle slips)."
@@ -43,7 +43,7 @@ BENCHMARK_FIGURES: tuple[dict[str, str], ...] = (
     },
     {
         "file": "gfl_vs_gfm_weak_grid_collapse.png",
-        "title": "Figure 3 — Weak-Grid SCR Collapse & Parallel-Line Opening: GFL (SRF-PLL) vs. GFM",
+        "title": "Figure 3, Weak-Grid SCR Collapse & Parallel-Line Opening: GFL (SRF-PLL) vs. GFM",
         "caption": (
             "GFL Hopf instability at SCR_crit = 2.99 / 1.80 / 1.67 (55/35/10 Hz PLL) and "
             "SCR 4.0 -> 1.22 line-trip pole slip vs. Hurwitz GFM VSG & dVOC ride-through."
@@ -51,7 +51,7 @@ BENCHMARK_FIGURES: tuple[dict[str, str], ...] = (
     },
     {
         "file": "gfm_triad_comparative_response.png",
-        "title": "Figure 4 — Comparative GFM Control Triad: Droop (13), VSG (14) & Andronov-Hopf dVOC (12)",
+        "title": "Figure 4, Comparative GFM Control Triad: Droop (13), VSG (14) & Andronov-Hopf dVOC (12)",
         "caption": (
             "Droop t_90 = 99 ms (18.44 kW), VSG inertial support (21.52 kW, 49.748 Hz nadir), "
             "and dVOC exact Bernoulli black-start limit-cycle self-excitation."
@@ -59,7 +59,7 @@ BENCHMARK_FIGURES: tuple[dict[str, str], ...] = (
     },
     {
         "file": "lcl_cascaded_electromagnetic_response.png",
-        "title": "Figure 5 — 14-State Synchronous-dq LCL Plant & Cascaded Dual-Loop PI Verification",
+        "title": "Figure 5, 14-State Synchronous-dq LCL Plant & Cascaded Dual-Loop PI Verification",
         "caption": (
             "Cross-timescale agreement against the 4-state Thévenin model plus passive R_d = 1.8 Ohm "
             "suppression of the 1049 Hz LCL resonance."
@@ -67,7 +67,7 @@ BENCHMARK_FIGURES: tuple[dict[str, str], ...] = (
     },
     {
         "file": "inverter_transient_response.png",
-        "title": "Figure 6 — Closed-Loop 4-State VSG Swing & Thévenin AC Grid Baseline (SCR = 6.0)",
+        "title": "Figure 6, Closed-Loop 4-State VSG Swing & Thévenin AC Grid Baseline (SCR = 6.0)",
         "caption": (
             "20 kVA / 230 Vrms canonical RoCoF & load-step transient: Nadir = 49.748 Hz, "
             "Peak P_pcc = 21.60 kW, Final settled P_pcc = 17.90 kW."
@@ -1218,15 +1218,15 @@ APP_JS = """\
   function updateKpis(tr) {
     const verdictEl = el("kpi-verdict");
     if (tr.rodeThrough) {
-      verdictEl.textContent = "PASS — BOUNDED";
+      verdictEl.textContent = "PASS, BOUNDED";
       verdictEl.className = "kpi-value status-pass";
       el("kpi-verdict-sub").textContent = "Zero pole slips & current bounded";
     } else if (tr.overcurrent) {
-      verdictEl.textContent = "FAIL — OVERCURRENT";
+      verdictEl.textContent = "FAIL, OVERCURRENT";
       verdictEl.className = "kpi-value status-fail";
       el("kpi-verdict-sub").textContent = "Exceeds 48.0 A bridge ceiling";
     } else {
-      verdictEl.textContent = "FAIL — POLE SLIP";
+      verdictEl.textContent = "FAIL, POLE SLIP";
       verdictEl.className = "kpi-value status-fail";
       el("kpi-verdict-sub").textContent = "Synchronism lost (|delta| > 165 deg)";
     }
@@ -1467,7 +1467,7 @@ def _render_index_html(presets: dict[str, Any], *, has_figures: bool) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GFM &amp; Weak-Grid Inverter Control Workbench — gfm_solver v{WORKBENCH_VERSION}</title>
+  <title>GFM &amp; Weak-Grid Inverter Control Workbench, gfm_solver v{WORKBENCH_VERSION}</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -1486,13 +1486,13 @@ def _render_index_html(presets: dict[str, Any], *, has_figures: bool) -> str:
         Interactive browser-side 4th-order Runge-Kutta (<code>dt = 250 us</code>) electromagnetic fault &amp; weak-grid
         simulator coupled with exact Python state-space modal participation, synchronous-<code>dq</code> admittance
         passivity <code>nu(f)</code>, and Generalized Nyquist <code>Z = P + N</code> datasets.
-        <em>(Model-consistency research workbench only — not hardware or grid-code certification.)</em>
+        <em>(Model-consistency research workbench only, not hardware or grid-code certification.)</em>
       </p>
       <div class="preset-bar">
-        <button id="btn-preset-sag-tvi" type="button">1. 0.15 pu Sag — TVI + PAW Ride-Through</button>
-        <button id="btn-preset-sag-clamp" type="button">2. 0.15 pu Sag — Hard Clamp Windup LOS</button>
-        <button id="btn-preset-jump" type="button">3. -45° Phase Jump — TVI + PAW</button>
-        <button id="btn-preset-weak-gfl" type="button">4. Weak-Grid Line Trip — GFL 55 Hz LOS</button>
+        <button id="btn-preset-sag-tvi" type="button">1. 0.15 pu Sag, TVI + PAW Ride-Through</button>
+        <button id="btn-preset-sag-clamp" type="button">2. 0.15 pu Sag, Hard Clamp Windup LOS</button>
+        <button id="btn-preset-jump" type="button">3. -45° Phase Jump, TVI + PAW</button>
+        <button id="btn-preset-weak-gfl" type="button">4. Weak-Grid Line Trip, GFL 55 Hz LOS</button>
         <button id="btn-preset-dvoc-trip" type="button">5. dVOC Line-Opening Ride-Through</button>
       </div>
     </header>
@@ -1502,10 +1502,10 @@ def _render_index_html(presets: dict[str, Any], *, has_figures: bool) -> str:
         <div class="ctrl-group">
           <label for="sel-arch"><span>Converter Architecture</span></label>
           <select id="sel-arch">
-            <option value="vsg">GFM — Virtual Synchronous Generator (VSG)</option>
-            <option value="droop">GFM — Multi-Loop P-f / Q-V Droop</option>
-            <option value="dvoc">GFM — Andronov-Hopf Oscillator (dVOC)</option>
-            <option value="gfl">GFL — Synchronous-Ref-Frame PLL (SRF-PLL)</option>
+            <option value="vsg">GFM, Virtual Synchronous Generator (VSG)</option>
+            <option value="droop">GFM, Multi-Loop P-f / Q-V Droop</option>
+            <option value="dvoc">GFM, Andronov-Hopf Oscillator (dVOC)</option>
+            <option value="gfl">GFL, Synchronous-Ref-Frame PLL (SRF-PLL)</option>
           </select>
         </div>
         <div class="ctrl-group">
@@ -1668,7 +1668,7 @@ def _render_index_html(presets: dict[str, Any], *, has_figures: bool) -> str:
     </section>
 
     <footer>
-      <span>MIT License — Haris Zafar (<code>hariszafar740-lang/inverter-grid-control-solver</code>)</span>
+      <span>MIT License, Haris Zafar (<code>hariszafar740-lang/inverter-grid-control-solver</code>)</span>
       <span>
         Grid-Forming &amp; Weak-Grid Electromagnetic LCL, FRT/TVI &amp; dq Passivity Solver (v{WORKBENCH_VERSION})
       </span>

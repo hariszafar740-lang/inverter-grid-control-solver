@@ -3,12 +3,12 @@
 Evaluates two fundamental weak-grid stability mechanisms at high active-power dispatch
 (``P_ref = 15 kW = 0.75 pu`` on the ``20 kVA`` 6-state electromagnetic ``dq`` LCL plant):
 
-  1. **Dynamic PLL-Grid Impedance Hopf Bifurcation (``SCR_crit(f_bw,pll)``):**
+  1. Dynamic PLL-Grid Impedance Hopf Bifurcation (``SCR_crit(f_bw,pll)``):
      Increasing ``SRF-PLL`` closed-loop bandwidth amplifies positive feedback between
      PLL speed ``omega_pll`` and weak inductive voltage drop ``omega_pll * L_net * i_2d``,
      driving complex-conjugate eigenvalues into the right-half plane even when a static
      operating point still exists.
-  2. **Static Synchronizing / Nose-Curve Saddle-Node Collapse (``SCR_static``):**
+  2. Static Synchronizing / Nose-Curve Saddle-Node Collapse (``SCR_static``):
      Below ``SCR_static ~ 1.32`` at ``0.75 pu`` dispatch, ``V_g * sin(delta) = X_net * i_2d``
      loses real solutions and *any* pure P/Q GFL current source undergoes unbounded PLL
      pole-slipping (Loss of Synchronism, ``LOS``), whereas Grid-Forming ``Droop``, ``VSG``,

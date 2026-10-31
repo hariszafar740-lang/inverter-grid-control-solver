@@ -7,17 +7,17 @@ admittance stability theory across Grid-Forming (VSG, Droop, dVOC) and Grid-Foll
 2015; Wen et al., *IEEE TPEL*, 2016; Wang & Blaabjerg, *IEEE TPEL*, 2019; Qoria et al.,
 *IEEE TPEL*, 2020):
 
-  1. **Normalized Participation Factors (``compute_modal_participation``):**
+  1. Normalized Participation Factors (``compute_modal_participation``):
      Decomposes every right/left eigenpair ``(lambda_i, v_i, w_i)`` of the coupled state
      matrix ``A`` into exact dimensionless state participation ``P_{ki} = |w_{ki} v_{ki}| /
      sum_m |w_{mi} v_{mi}|`` and physical subsystem shares (``sync_outer``, ``voltage_pi``,
      and ``current_pi`` / ``lcl_network``).
-  2. **Exact Analytical State-Space Synchronous-dq Input Admittance ``Y_inv,dq(s)``:**
+  2. Exact Analytical State-Space Synchronous-dq Input Admittance ``Y_inv,dq(s)``:
      Cuts the converter-network loop at the PCC bus in the synchronous grid ``dq`` frame
      (``Delta i_in,dq^g = -Delta i_2,dq^g = Y_inv,dq(s) Delta v_pcc,dq^g``) around the exact
      loaded PCC operating point, satisfying the Schur-complement pole identity:
      det(I_2 + Z_g,dq(lambda_i) Y_inv,dq(lambda_i)) = 0 at every coupled eigenvalue.
-  3. **Passivity Index ``nu(f)`` & Generalized Nyquist Cauchy Winding (``Z = P + N``):**
+  3. Passivity Index ``nu(f)`` & Generalized Nyquist Cauchy Winding (``Z = P + N``):
      Evaluates the Hermitian passivity index ``nu(f) = lambda_min(0.5 * [Y_dq + Y_dq^H])``,
      incremental ``q``-axis conductance ``Re{Y_qq(j 2 pi f)}``, and unwrapped Cauchy argument
      winding of ``det(I_2 + Z_g,dq(j 2 pi f) Y_inv,dq(j 2 pi f))`` to recover the exact
