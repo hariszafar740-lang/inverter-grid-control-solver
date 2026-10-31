@@ -13,11 +13,11 @@ I care most about the eigenvalue picture here, and the gains probably mean littl
 
 - Zero-CDN Interactive HTML5/Canvas GFM & Weak-Grid Workbench (`src/web_dashboard.py`, `gfm-sim web`): Self-contained offline/GitHub Pages engineering workbench combining a real-time browser 4th-order Runge-Kutta (`dt = 250 us`) electromagnetic fault & weak-grid simulator (`VSG`, `Droop`, `dVOC`, `SRF-PLL`; `TVI + PAW`, `Hard Clamp`, `Unprotected`) with live Python state-space root-locus.
 - Passivity ν(f), Generalized Nyquist Z = P + N, and one-click CSV trace export.
-- Small-Signal Eigenvalue Participation, Synchronous-dq Admittance Passivity & Generalized Nyquist (`src/small_signal_impedance.py`, `src/cli.py`): Decomposes right/left state-space eigenvectors into exact normalized participation matrices P_ki.
-- It derives the exact 2×2 synchronous-dq PCC input admittance Y_(inv,dq)(s) satisfying the Schur-complement pole identity det(I_2 + Z_(g,dq)(λ_i)Y_(inv,dq)(λ_i)) = 0.
-- It proves why Qoria partial feedforward (F_i = 0.75) maintains medium/high-frequency passivity (ν(f) > 0 across [25.
-- 6000] Hz) whereas naive F_i = 1.00 induces a non-passive dip (ν = -1.04 S on [25.1.
-- 93.3] Hz), and verifies exact Generalized Nyquist RHP pole counts Z = P + N ≡ Z_ss across `VSG`, `Droop`, `dVOC`, and `GFL`.
+- Small-Signal Eigenvalue Participation, Synchronous-dq Admittance Passivity & Generalized Nyquist (`src/small_signal_impedance.py`, `src/cli.py`): Decomposes right/left state-space eigenvectors into exact normalized participation matrices P(ki).
+- It derives the exact 2×2 synchronous-dq PCC input admittance Y_(inv,dq)(s) satisfying the Schur-complement pole identity det(I(2) + Z_(g,dq)(λ(i))Y_(inv,dq)(λ(i))) = 0.
+- It proves why Qoria partial feedforward (F(i) = 0.75) maintains medium/high-frequency passivity (ν(f) > 0 across [25.
+- 6000] Hz) whereas naive F(i) = 1.00 induces a non-passive dip (ν = -1.04 S on [25.1.
+- 93.3] Hz), and verifies exact Generalized Nyquist RHP pole counts Z = P + N ≡ Z(ss) across `VSG`, `Droop`, `dVOC`, and `GFL`.
 - 14-State Electromagnetic Fault Ride-Through (`FRT`), `-45 deg` Phase Jump.
 - Threshold Transient Virtual Impedance (`TVI`) & Power Anti-Windup (`src/transient_virtual_impedance.py`, `src/em_frt_benchmark.py`): Contrasts unprotected overcurrent spikes (`160.2 A = 3.91 pu`).
 - Qoria circular current-limiter latch-up & virtual-rotor windup (`440.7 deg` under a `0.15 pu` sag; `344.7 deg` under a `-45 deg` phase jump).
@@ -54,23 +54,23 @@ python -m pytest -v
 
 All CLI subcommands (`gfm-sim info`, `gfm-sim triad`, `gfm-sim weak-grid`, `gfm-sim frt`, `gfm-sim impedance`, `gfm-sim web`, or `python -m gfm_solver <subcommand>`) support `--json` structured output.
 
-## Small-Signal `dq` Admittance Passivity & Generalized Nyquist Summary (`SCR = 1.65`, P_ref = 15 kW)
+## Small-Signal `dq` Admittance Passivity & Generalized Nyquist Summary (`SCR = 1.65`, P(ref) = 15 kW)
 
-Cutting the coupled converter–network loop at the PCC in the synchronous grid dq frame (Δi_(in,dq)^g = Y_(inv,dq)(s)Δv_(pcc,dq)^g) yields exact equivalence between frequency-domain Cauchy winding (Z_nyq = P + N) and coupled state-space eigenvalues (Z_ss):
+Cutting the coupled converter–network loop at the PCC in the synchronous grid dq frame (Δi_(in,dq)^g = Y_(inv,dq)(s)Δv_(pcc,dq)^g) yields exact equivalence between frequency-domain Cauchy winding (Z(nyq) = P + N) and coupled state-space eigenvalues (Z(ss)):
 
-| Converter Architecture | Passivity min_(f ≥25 Hz) ν(f) | Non-Passive Band (≥25 Hz) | Negative Re{Y_qq} Band | Stiff-Bus RHP P | Nyquist Winding N | Closed-Loop RHP Z = P + N |
+| Converter Architecture | Passivity min_(f ≥25 Hz) ν(f) | Non-Passive Band (≥25 Hz) | Negative Re{Y(qq)} Band | Stiff-Bus RHP P | Nyquist Winding N | Closed-Loop RHP Z = P + N |
 |:--- |:---: |:---: |:---: |:---: |:---: |:---: |
-| `GFM VSG` (Qoria F_i = 0.75) | `+0.0019 S` | None (Passive) | `[1.0, 3.3] Hz` | `2` | `-2` | `0` (Hurwitz Stable) |
-| `GFM VSG` (Naive F_i = 1.00) | `-1.0415 S` | `[25.1, 93.3] Hz` | `[1.0, 89.6] Hz` | `2` | `0` | `2` (`42 Hz` Unstable!) |
+| `GFM VSG` (Qoria F(i) = 0.75) | `+0.0019 S` | None (Passive) | `[1.0, 3.3] Hz` | `2` | `-2` | `0` (Hurwitz Stable) |
+| `GFM VSG` (Naive F(i) = 1.00) | `-1.0415 S` | `[25.1, 93.3] Hz` | `[1.0, 89.6] Hz` | `2` | `0` | `2` (`42 Hz` Unstable!) |
 | `GFM dVOC` (Andronov-Hopf) | `+0.0019 S` | None (Passive) | `[1.0, 6.5] Hz` | `2` | `-2` | `0` (Hurwitz Stable) |
 | `GFM Droop` (`13`-State) | `+0.0019 S` | None (Passive) | `[1.0, 7.2] Hz` | `2` | `-2` | `0` (Hurwitz Stable) |
 | `GFL SRF-PLL` (`10 Hz`) | `-0.0168 S` | `[25.1, 479.6] Hz` | `[1.0, 19.7] Hz` | `0` | `+2` | `2` (Unstable Hopf) |
 | `GFL SRF-PLL` (`35 Hz`) | `-0.1243 S` | `[25.1, 479.6] Hz` | `[1.0, 283.6] Hz` | `0` | `+2` | `2` (Unstable Hopf) |
 | `GFL SRF-PLL` (`55 Hz`) | `-0.1259 S` | `[25.1, 479.6] Hz` | `[1.0, 361.4] Hz` | `0` | `+4` | `4` (2 Unstable Pairs) |
 
-## 14-State Electromagnetic `FRT` & `-45 deg` Grid Phase-Jump Summary (`20 kVA`, `SCR = 4.0`, I_max = 48.0 A)
+## 14-State Electromagnetic `FRT` & `-45 deg` Grid Phase-Jump Summary (`20 kVA`, `SCR = 4.0`, I(max) = 48.0 A)
 
-| Contingency & Protection Mode | Peak Bridge |i_(1,dq)| | Max |δ_rel(t)| | Voltage-Loop Sat. Duty | Fault / Event Q̄_pcc | Post-Event P_pcc | Ride-Through |
+| Contingency & Protection Mode | Peak Bridge |i_(1,dq)| | Max |δ_rel(t)| | Voltage-Loop Sat. Duty | Fault / Event Q̄_pcc | Post-Event P(pcc) | Ride-Through |
 |:--- |:---: |:---: |:---: |:---: |:---: |:---: |
 | `0.15 pu` Sag, Unprotected | `160.23 A` (`3.91 pu`) | `71.6 deg` | `0.0%` | `+26.53 kvar` | `16.69 kW` | Fail (Overcurrent) |
 | `0.15 pu` Sag, Hard Clamp Only | `52.01 A` | `440.7 deg` | `81.7%` | `+4.87 kvar` | `-17.87 kW` | Fail (Windup `LOS`) |
@@ -81,17 +81,17 @@ Cutting the coupled converter–network loop at the PCC in the synchronous grid 
 
 ## Weak-Grid `SCR` Collapse & GFM Triad Summary (`20 kVA`, `X/R = 7.0`)
 
-- Weak-Grid `GFL` vs. `GFM` (P_ref = 15 kW): `GFL SRF-PLL` (`55 / 35 / 10 Hz`) exhibits Hopf instability at SCR_crit = 2.99 / 1.80 / 1.67 and static nose collapse below SCR ≈1.33.
+- Weak-Grid `GFL` vs. `GFM` (P(ref) = 15 kW): `GFL SRF-PLL` (`55 / 35 / 10 Hz`) exhibits Hopf instability at SCR_crit = 2.99 / 1.80 / 1.67 and static nose collapse below SCR ≈1.33.
 - Whereas `VSG` (maxRe(λ) = -3.97 s^(-1)) and `dVOC` (-2.65 s^(-1)) remain Hurwitz down to SCR = 1.15 and ride through `SCR 4.0 -> 1.22` line opening without `LOS`.
-- Comparative GFM Control Triad (`SCR = 6.0`): `Droop` (`13` states, t_90 = 99.0 ms, peak 18.44 kW), `VSG` (`14` states, t_90 = 189.0 ms.
-- Peak 21.52 kW, nadir 49.748 Hz), and `dVOC` (`12` states, t_90 = 214.0 ms, peak 17.97 kW, exact Bernoulli black-start self-excitation).
+- Comparative GFM Control Triad (`SCR = 6.0`): `Droop` (`13` states, t(90) = 99.0 ms, peak 18.44 kW), `VSG` (`14` states, t(90) = 189.0 ms.
+- Peak 21.52 kW, nadir 49.748 Hz), and `dVOC` (`12` states, t(90) = 214.0 ms, peak 17.97 kW, exact Bernoulli black-start self-excitation).
 
 ## Governing Equations
 
 ### 1. Modal Participation, Synchronous-dq Input Admittance & Generalized Nyquist (`src/small_signal_impedance.py`)
 
-For right/left eigenvectors Av_i = λ_iv_i and w_i^ᵀ A = λ_i w_i^ᵀ, state k's participation in mode i is P_ki = |w_kiv_ki| / Σ_m |w_miv_mi|.
-Linearizing the stiff-PCC converter realization (A_0, B_0, C_0) around the loaded PCC operating point gives:
+For right/left eigenvectors Av_i = λ(iv)_i and w(i)^ᵀ A = λ(i) w(i)^ᵀ, state k's participation in mode i is P(ki) = |w(kiv)_ki| / Σ_m |w(miv)_mi|.
+Linearizing the stiff-PCC converter realization (A(0), B(0), C(0)) around the loaded PCC operating point gives:
 
 ~~~
 Y_(inv,dq)(s) = C_0(sI - A_0)^(-1)B_0, ν(ω) = λ_min(1/2[Y_(inv,dq)(jω) + Y_(inv,dq)^H(jω)]), det(I_2 + Z_(g,dq)(λ_i)Y_(inv,dq)(λ_i)) = 0
