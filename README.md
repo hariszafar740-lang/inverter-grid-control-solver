@@ -4,6 +4,7 @@
 ![Python Version](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)
 [![Interactive Workbench](https://img.shields.io/badge/Interactive_Workbench-GitHub_Pages-10b981?logo=github)](https://hariszafar740-lang.github.io/inverter-grid-control-solver/)
 ![Release](https://img.shields.io/badge/release-v1.0.0-0284c7)
+[![PyPI](https://img.shields.io/pypi/v/inverter-grid-control-solver?color=blue)](https://pypi.org/project/inverter-grid-control-solver/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Physics-based Python simulation, modal participation, synchronous-dq impedance passivity verification framework (`gfm_solver` / `gfm-sim`).
